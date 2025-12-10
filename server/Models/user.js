@@ -74,8 +74,16 @@ const UserSchema = mongoose.Schema({
     required: true
   },
   location: {
-    type: String,
-    required: true
+    latitude: {
+      type: Number,
+      required: false,
+      default: null,
+    },
+    longitude: {
+      type: Number,
+      required: false,
+      default: null,
+    },
   },
   dependencies: {
     type: [DependenciesSchema],

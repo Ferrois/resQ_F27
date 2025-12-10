@@ -27,7 +27,7 @@ function formatUserResponse(user) {
 
 router.post("/register", async (req, res) => {
   console.log(req.body)
-  const { username, name, birthday, phoneNumber, address, location, medical, skills, dependencies, gender, password } = req.body;
+  const { username, name, birthday, phoneNumber, address, medical, skills, dependencies, gender, password, location } = req.body;
   
   // If user already exists, Error 1
   const existingUser = await UserSchema.findOne({ username: username });
@@ -49,18 +49,21 @@ router.post("/register", async (req, res) => {
   }
 
   try {
-    const user = new UserSchema({ 
-      gender, 
-      passwordHash, 
-      username, 
-      name, 
-      birthday: new Date(birthday), 
-      phoneNumber, 
-      address, 
-      location, 
-      medical: medical || [], 
-      skills: skills || [], 
-      dependencies: dependencies || [] 
+    const user = new UserSchema({
+      gender,
+      passwordHash,
+      username,
+      name,
+      birthday: new Date(birthday),
+      phoneNumber,
+      address,
+      location: location && typeof location === "object" ? {
+        latitude: location.latitude ?? null,
+        longitude: location.longitude ?? null,
+      } : undefined,
+      medical: medical || [],
+      skills: skills || [],
+      dependencies: dependencies || []
     });
     await user.save();
     res.status(201).json({type: "success", message: "User successfully created", dev: user});
