@@ -20,7 +20,7 @@ import { toaster } from '../components/ui/toaster';
 
 function Register() {
   const navigate = useNavigate();
-  const { publicRequest, setAuthToken } = useApi();
+  const { publicRequest, setSession } = useApi();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
@@ -149,9 +149,9 @@ function Register() {
       });
 
       if (response.success) {
-        // Save token
-        if (response.data.accessToken) {
-          setAuthToken(response.data.accessToken);
+        const { accessToken, refreshToken, user } = response.data;
+        if (accessToken && refreshToken && user) {
+          setSession({ accessToken, refreshToken, user });
         }
 
         toaster.create({
@@ -162,7 +162,7 @@ function Register() {
 
         // Redirect to home or dashboard
         setTimeout(() => {
-          navigate('/');
+          navigate('/main');
         }, 1000);
       } else {
         toaster.create({

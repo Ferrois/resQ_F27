@@ -1,15 +1,19 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Box, Flex, Heading, IconButton, Text, Button, Stack } from "@chakra-ui/react";
 import { FiSettings, FiBell, FiNavigation } from "react-icons/fi";
+import { toaster } from "../components/ui/toaster";
 import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { Link as RouterLink } from "react-router-dom";
 import { useApi } from "../Context/ApiContext";
 import { useLocationContext } from "../Context/LocationContext";
+import { useSocket } from "../Context/SocketContext";
 
 function Main() {
   const { auth } = useApi();
   const { location, locationError, refreshLocation } = useLocationContext();
+  const { socket } = useSocket();
+  const [isSendingSOS, setIsSendingSOS] = useState(false);
   const mapRef = useRef(null);
   const displayName = auth?.user?.name || auth?.user?.fullName || auth?.user?.username || "User";
   const mapCenter = location ? [location.lat, location.lng] : [51.505, -0.09];
@@ -22,12 +26,66 @@ function Main() {
 
   const recenterOnUser = () => {
     if (location && mapRef.current) {
-      console.log("LOCATION");
       mapRef.current.flyTo([location.lat, location.lng], 15);
       return;
     }
     refreshLocation();
   };
+
+  const handleEmergencyPress = () => {
+    if (!socket) {
+      toaster.error({ status: "error", title: "Not connected", description: "Socket connection not ready yet." });
+      return;
+    }
+
+    if (!location?.lat || !location?.lng) {
+      toaster.error({ status: "error", title: "Location unavailable", description: "We need your location before raising an emergency." });
+      refreshLocation();
+      return;
+    }
+
+    setIsSendingSOS(true);
+    socket.emit(
+      "emergency:raise",
+      {
+        latitude: location.lat,
+        longitude: location.lng,
+        accuracy: location.accuracy,
+      },
+      (res) => {
+        setIsSendingSOS(false);
+        if (res?.status === "ok") {
+          toaster.success({
+            status: "success",
+            title: "Emergency sent",
+            description: "Nearby responders have been notified.",
+          });
+        } else {
+          toaster.error({
+            status: "error",
+            title: "Failed to send emergency",
+            description: res?.message || "Please try again.",
+          });
+        }
+      }
+    );
+  };
+
+  useEffect(() => {
+    if (!socket) return undefined;
+    const handler = (payload) => {
+      const distance = payload?.distance ? `${Math.round(payload.distance)}m away` : "nearby";
+      toaster.warning({
+        status: "warning",
+        title: "Emergency nearby",
+        description: `Someone needs help ${distance}.`,
+      });
+    };
+    socket.on("emergency:nearby", handler);
+    return () => {
+      socket.off("emergency:nearby", handler);
+    };
+  }, [socket]);
 
   return (
     <Box position="relative" minH="100vh" bg="black">
@@ -37,11 +95,9 @@ function Main() {
           zoom={13}
           style={{ height: "100vh", width: "100%", zIndex: 0 }}
           zoomControl={false}
-          //   whenCreated={(mapInstance) => {
-          //     console.log("EXIST")
-          //     mapRef.current = mapInstance;
-          //   }}
-          whenCreated={() => alert("TEST")}
+          whenReady={(mapInstance) => {
+            mapRef.current = mapInstance.target;
+          }}
         >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           {location && (
@@ -109,22 +165,12 @@ function Main() {
           )}
         </Box>
         <Flex align="center" gap="2">
-          <IconButton
-            aria-label="Notifications"
-            variant="ghost"
-            color="white"
-            _hover={{ bg: "whiteAlpha.200" }}
-            icon={<FiBell />}
-          />
-          <IconButton
-            aria-label="Settings"
-            as={RouterLink}
-            to="/settings"
-            variant="ghost"
-            color="white"
-            _hover={{ bg: "whiteAlpha.200" }}
-            icon={<FiSettings />}
-          />
+          <IconButton aria-label="Notifications" variant="ghost" color="white" _hover={{ bg: "whiteAlpha.200" }}>
+            <FiBell />
+          </IconButton>
+          <IconButton aria-label="Settings" as={RouterLink} to="/settings" variant="ghost" color="white">
+            <FiSettings />
+          </IconButton>
         </Flex>
       </Flex>
 
@@ -132,17 +178,27 @@ function Main() {
         <IconButton
           aria-label="Recenter to my location"
           size="lg"
-          icon={<FiNavigation />}
           onClick={recenterOnUser}
           //   isDisabled={!location && locationError}
           colorPalette="blue"
           shadow="md"
           variant="solid"
-        />
+        >
+          <FiNavigation />
+        </IconButton>
       </Box>
 
       <Box position="fixed" bottom="24px" left="50%" transform="translateX(-50%)" zIndex="1">
-        <Button size="lg" px="10" py="6" colorPalette="red" shadow="lg" fontWeight="bold">
+        <Button
+          size="lg"
+          px="10"
+          py="6"
+          colorPalette="red"
+          shadow="lg"
+          fontWeight="bold"
+          onClick={handleEmergencyPress}
+          isLoading={isSendingSOS}
+        >
           EMERGENCY PRESS HERE
         </Button>
       </Box>
