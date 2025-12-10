@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Sensor Data</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+
+        #data-output {
+            margin-top: 20px;
+            text-align: left;
+            display: inline-block;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        .axis-data {
+            margin-bottom: 10px;
+        }
+
+        .value {
+            font-weight: bold;
+            color: #007bff;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Device Sensor Reader (Accelerometer & Gyroscope)</h1>
+    <p>Click the button to request access to the device sensors.</p>
+    <button id="start-sensors-btn">Start Sensor Monitoring</button>
+
+    <div id="data-output">
+        <h2>📊 Sensor Data</h2>
+        <div class="axis-data">
+            <strong>Accelerometer (m/s²):</strong>
+            <p>X: <span id="accel-x" class="value">N/A</span></p>
+            <p>Y: <span id="accel-y" class="value">N/A</span></p>
+            <p>Z: <span id="accel-z" class="value">N/A</span></p>
+        </div>
+        <hr>
+        <div class="axis-data">
+            <strong>Gyroscope (rad/s):</strong>
+            <p>X: <span id="gyro-x" class="value">N/A</span></p>
+            <p>Y: <span id="gyro-y" class="value">N/A</span></p>
+            <p>Z: <span id="gyro-z" class="value">N/A</span></p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
