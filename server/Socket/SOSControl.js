@@ -93,6 +93,16 @@ function registerSOSHandlers(io) {
         }).select(["location.latitude", "location.longitude"]);
 
         const origin = { latitude, longitude };
+        const requester = await User.findById(userId).select([
+          "name",
+          "username",
+          "phoneNumber",
+          "medical",
+          "skills",
+          "location.latitude",
+          "location.longitude",
+        ]);
+
         others.forEach((user) => {
           const loc = {
             latitude: toNumber(user.location?.latitude),
@@ -104,20 +114,61 @@ function registerSOSHandlers(io) {
             const subscriberSockets = emergencySubscribers.get(String(user._id));
             subscriberSockets?.forEach((socketId) => {
               io.to(socketId).emit("emergency:nearby", {
+                emergencyId,
                 userId,
                 latitude,
                 longitude,
                 expiresAt,
                 distance,
+                requester: requester
+                  ? {
+                      id: requester._id,
+                      name: requester.name,
+                      username: requester.username,
+                      phoneNumber: requester.phoneNumber,
+                      medical: requester.medical,
+                      skills: requester.skills,
+                    }
+                  : null,
               });
             });
           }
         });
 
-        ack?.({ status: "ok", expiresAt });
+        ack?.({ status: "ok", expiresAt, emergencyId });
       } catch (error) {
         console.error("Failed to handle emergency raise", error);
         ack?.({ status: "error", message: "Failed to save emergency" });
+      }
+    });
+
+    socket.on("emergency:cancel", async (payload = {}, ack) => {
+      const { emergencyId } = payload;
+      if (!emergencyId) {
+        ack?.({ status: "error", message: "emergencyId is required" });
+        return;
+      }
+      try {
+        const result = await User.updateOne(
+          { _id: userId, "emergencies._id": emergencyId },
+          { $set: { "emergencies.$.isActive": false } }
+        );
+        if (result.modifiedCount === 0) {
+          ack?.({ status: "error", message: "Emergency not found" });
+          return;
+        }
+
+        // Notify all subscribers so they can remove the cancelled emergency
+        emergencySubscribers.forEach((subscriberSockets) => {
+          subscriberSockets?.forEach((socketId) => {
+            io.to(socketId).emit("emergency:cancelled", { emergencyId, userId });
+          });
+        });
+
+        ack?.({ status: "ok" });
+      } catch (err) {
+        console.error("Failed to cancel emergency", err);
+        ack?.({ status: "error", message: "Failed to cancel emergency" });
       }
     });
 
