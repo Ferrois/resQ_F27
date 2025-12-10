@@ -28,7 +28,7 @@ function Login() {
 
   useEffect(() => {
     if (!isLoadingSession && auth?.accessToken) {
-      navigate("/");
+      navigate("/main");
     }
   }, [auth?.accessToken, isLoadingSession, navigate]);
 
@@ -39,7 +39,7 @@ function Login() {
     const response = await login(username, password);
     setLoading(false);
     if (response.success) {
-      navigate("/");
+      navigate("/main");
     } else {
       setError(response.error?.message || "Unable to login");
     }

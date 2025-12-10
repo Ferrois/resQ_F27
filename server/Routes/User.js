@@ -79,12 +79,12 @@ router.post("/login", async (req, res) => {
   try {
     const user = await UserSchema.findOne({ username });
     if (!user) {
-      return res.status(401).json({ type: "error", message: "Invalid credentials" });
+      return res.status(401).json({ type: "error", message: "Invalid credentials username" });
     }
 
     const passwordMatches = await comparePassword(password, user.passwordHash);
     if (!passwordMatches) {
-      return res.status(401).json({ type: "error", message: "Invalid credentials" });
+      return res.status(401).json({ type: "error", message: "Invalid credentials password" });
     }
 
     const payload = { id: user._id, username: user.username };
