@@ -28,7 +28,6 @@ function Register() {
     birthday: '',
     phoneNumber: '',
     address: '',
-    location: '',
     password: '',
     confirmPassword: '',
     gender: '',
@@ -101,9 +100,6 @@ function Register() {
     if (!formData.address || formData.address.trim().length === 0) {
       newErrors.address = 'Address is required';
     }
-    if (!formData.location || formData.location.trim().length === 0) {
-      newErrors.location = 'Location is required';
-    }
     if (!formData.password || formData.password.length < 8) {
       newErrors.password = 'Password must be at least 8 characters';
     }
@@ -133,7 +129,7 @@ function Register() {
     setLoading(true);
 
     try {
-      const { username, name, birthday, phoneNumber, address, location, password, gender } = formData;
+      const { username, name, birthday, phoneNumber, address, password, gender } = formData;
       
       // Filter out empty skills and medical entries
       const validSkills = skills.filter(skill => skill.name.trim() && skill.level);
@@ -145,7 +141,6 @@ function Register() {
         birthday,
         phoneNumber,
         address,
-        location,
         password,
         gender,
         medical: validMedical,
@@ -279,20 +274,6 @@ function Register() {
                 />
                 {errors.address && (
                   <Field.ErrorText>{errors.address}</Field.ErrorText>
-                )}
-              </Field.Root>
-
-              <Field.Root required invalid={!!errors.location}>
-                <Field.Label>Location</Field.Label>
-                <Input
-                  name="location"
-                  value={formData.location}
-                  onChange={handleChange}
-                  placeholder="Enter your location (city, state, etc.)"
-                  type="text"
-                />
-                {errors.location && (
-                  <Field.ErrorText>{errors.location}</Field.ErrorText>
                 )}
               </Field.Root>
 
