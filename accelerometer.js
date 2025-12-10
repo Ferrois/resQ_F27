@@ -1,9 +1,3 @@
-const acl = new Accelerometer({ frequency: 60 });
-acl.addEventListener("reading", () => {
-    console.log(`Acceleration X: ${acl.x}, Y: ${acl.y}, Z: ${acl.z}`);
-});
-acl.start();
-
 // Configuration values
 const FALL_THRESHOLD = 3;       // Must first fall slowly (m/s²)
 const IMPACT_THRESHOLD = 25;    // Must then suddenly stop (m/s²)
@@ -19,7 +13,7 @@ function calculateTotalAccel(x, y, z) {
 }
 
 // Fall detection logic
-function checkForFall(totalAccel) {
+function checkFall(totalAccel) {
     const currentTime = Date.now();
   
     if (totalAccel < FALL_THRESHOLD) {        // Start to fall liao
@@ -32,7 +26,7 @@ function checkForFall(totalAccel) {
     else if (totalAccel > IMPACT_THRESHOLD && falling) {    // Got hit floor anot?
         const duration = currentTime - startTime;
         if (duration >= MIN_FALL_TIME) {                    // Got fall long enough?
-        handleFallDetected(duration, totalAccel);           // If all got means fall alr
+        fallDetected(duration, totalAccel);                 // If all got means fall alr
         }
         falling = false;
         startTime = null;
@@ -40,45 +34,39 @@ function checkForFall(totalAccel) {
   
     else {  // Fall but no problem
         if (falling) {
-        console.log('Freefall ended without impact');
+        console.log('Fall ended without impact');
     }
     falling = false;
     startTime = null;
   }
 }
 
-function handleFallDetected(duration, impactForce) {
-  console.log('FALL DETECTED!');
-  console.log('Freefall duration:', duration, 'ms');
-  console.log('Impact force:', impactForce.toFixed(2), 'm/s²');
+function fallDetected(duration, impactForce) {
+    console.log('FALL DETECTED!');
+    console.log('Fall duration:', duration.toFixed(0), 'ms');
+    console.log('Impact force:', impactForce.toFixed(2), 'm/s²');
 }
 
-// ============================================
-// HANDLE SENSOR DATA
-// ============================================
 function handleMotionEvent(event) {
-  // Get acceleration data from the sensor
-  const acc = event.accelerationIncludingGravity;
+    // Get acceleration data from the sensor
+    const acc = event.accelerationIncludingGravity;
   
-  // Make sure we have valid data
-  if (acc && acc.x !== null && acc.y !== null && acc.z !== null) {
+    // Make sure we have valid data
+    if (acc && acc.x !== null && acc.y !== null && acc.z !== null) {
     
-    // Get individual axis values (use 0 if null)
-    const x = acc.x || 0;
-    const y = acc.y || 0;
-    const z = acc.z || 0;
+        // Get individual axis values (use 0 if null)
+        const x = acc.x || 0;
+        const y = acc.y || 0;
+        const z = acc.z || 0;
     
-    // Calculate total acceleration magnitude
-    const totalAccel = calculateTotalAcceleration(x, y, z);
+        // Calculate total acceleration magnitude
+        const totalAccel = calculateTotalAccel(x, y, z);
     
-    // Check if this indicates a fall
-    checkForFall(totalAccel);
+        // Check if this indicates a fall
+        checkFall(totalAccel);
   }
 }
 
-// ============================================
-// START MONITORING
-// ============================================
 function startFallDetection() {
   console.log('Starting fall detection...');
   
@@ -86,9 +74,6 @@ function startFallDetection() {
   window.addEventListener('devicemotion', handleMotionEvent);
 }
 
-// ============================================
-// STOP MONITORING
-// ============================================
 function stopFallDetection() {
   console.log('Stopping fall detection...');
   
@@ -100,9 +85,4 @@ function stopFallDetection() {
   startTime = null;
 }
 
-// ============================================
-// START THE DETECTOR
-// ============================================
 startFallDetection();
-
-// To stop: call stopFallDetection()
