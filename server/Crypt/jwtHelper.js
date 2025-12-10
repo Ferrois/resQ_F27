@@ -39,19 +39,27 @@ function authenticateToken(req, res, next) {
 }
 
 // Verify token middleware (for sockets)
-function verifyToken(socket, next) {
-  try {
-    const { UID } = jwt.verify(socket.handshake.auth.token, ACCESS_TOKEN_SECRET);
-    socket.uid = UID;
-    next();
-  } catch (error) {
-    next(new Error("Invalid Token"));
+function authenticateSocket(socket, next) {
+  const token =
+    socket?.handshake?.auth?.token ||
+    (socket?.handshake?.headers?.authorization || "").replace("Bearer ", "");
+
+  if (!token) {
+    return next(new Error("Missing token"));
   }
+
+  jwt.verify(token, ACCESS_TOKEN_SECRET, (err, user) => {
+    if (err) {
+      return next(new Error("Invalid or expired token"));
+    }
+    socket.user = user;
+    next();
+  });
 }
 
 module.exports = {
   authenticateToken,
-  verifyToken,
+  authenticateSocket,
   generateAccessToken,
   generateRefreshToken,
   verifyRefreshToken,

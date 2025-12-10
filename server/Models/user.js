@@ -36,6 +36,22 @@ const SkillsSchema = mongoose.Schema({
   }
 });
 
+const EmergencySchema = mongoose.Schema({
+  isActive: {
+    type: Boolean,
+    required: true
+  },
+  createdAt: {
+    type: Date,
+    required: true,
+    default: Date.now
+  },
+  expiresAt: {
+    type: Date,
+    required: true
+  }
+})
+
 const UserSchema = mongoose.Schema({
   username: {
     type: String,
@@ -88,6 +104,9 @@ const UserSchema = mongoose.Schema({
   dependencies: {
     type: [DependenciesSchema],
     required: true
+  },
+  emergencies: {
+    type: [EmergencySchema]
   }
 });
 

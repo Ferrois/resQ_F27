@@ -66,7 +66,17 @@ router.post("/register", async (req, res) => {
       dependencies: dependencies || []
     });
     await user.save();
-    res.status(201).json({type: "success", message: "User successfully created", dev: user});
+    const payload = { id: user._id, username: user.username };
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
+
+    res.status(201).json({
+      type: "success",
+      message: "User successfully created",
+      accessToken,
+      refreshToken,
+      user: formatUserResponse(user),
+    });
   } catch (error) {
     res.status(500).json({ type: "error", message: error.message });
   }

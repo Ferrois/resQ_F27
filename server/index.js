@@ -6,10 +6,10 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const dbURI = process.env.dbURI;
 const server = require("http").createServer(app);
-// const io_chat = require("socket.io")(server, { cors: { origin: "*" } }).of("/chat");
-// io_chat.use(require("./Helper/authenticateToken").verifyToken);
-// const {  addUserListener, removeUserListener } = require("./Socket/online");
-
+const io = require("socket.io")(server, { cors: { origin: "*" } });
+const { authenticateSocket } = require("./Crypt/jwtHelper");
+const { registerLocationHandlers } = require("./Socket/LocationControl");
+const { registerSOSHandlers } = require("./Socket/SOSControl");
 
 //Connect to MongoDB
 mongoose.connect(`${dbURI}`).then((response) => {
@@ -37,7 +37,6 @@ app.use(express.json());
 const userRoute = require("./Routes/User");
 // const notificationRoute = require("./Routes/Notifications");
 // const settingRoute = require("./Routes/Settings");
-// const { privateChatListener } = require("./Socket/chat");
 
 // //Path initialization
 // app.use("/auth", authRoute);
@@ -54,12 +53,10 @@ app.get("/ping", function (req, res) {
 });
 
 // Socket
-// io_chat.on("connection", (socket) => {
-//   console.log("Socket Connected: " + socket.id);
-//   addUserListener(io_chat,socket)
-//   removeUserListener(io_chat,socket)
-//   privateChatListener(io_chat,socket)
-// });
+const locationNamespace = io.of("/socket");
+locationNamespace.use(authenticateSocket);
+registerLocationHandlers(locationNamespace);
+registerSOSHandlers(locationNamespace);
 
 //Listen on the port
 server.listen(port, function () {
