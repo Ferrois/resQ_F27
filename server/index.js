@@ -34,7 +34,7 @@ app.use(express.json());
 // const authRoute = require("./Routes/Auth");
 // const convoRoute = require("./Routes/Conversations");
 // const messageRoute = require("./Routes/Message");
-// const userRoute = require("./Routes/User");
+const userRoute = require("./Routes/User");
 // const notificationRoute = require("./Routes/Notifications");
 // const settingRoute = require("./Routes/Settings");
 // const { privateChatListener } = require("./Socket/chat");
@@ -43,7 +43,7 @@ app.use(express.json());
 // app.use("/auth", authRoute);
 // app.use("/convo", convoRoute);
 // app.use("/messages", messageRoute)
-// app.use("/user", userRoute);
+app.use("/user", userRoute);
 // app.use("/notifications", notificationRoute);
 // app.use("/settings", settingRoute);
 
