@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mobile 3D Fall Detection Simulator</title>
+<style>
+  body { margin:0; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#e0f7ff; }
+  header { background:#4A90E2; color:white; padding:15px; font-size:1.6em; font-weight:bold; text-align:center; }
+  #dashboard { display:flex; flex-direction:column; align-items:center; padding:10px; max-width:100vw; }
+  #status { font-size:22px; margin:8px; transition: all 0.5s ease; text-align:center; }
+  #acceleration { font-size:18px; margin:5px; transition: color 0.3s ease; text-align:center; }
+  #log { max-width:95vw; margin:10px auto; background:#fff; border-radius:10px; padding:10px; height:120px; overflow-y:auto; font-family:monospace; box-shadow:0 2px 8px rgba(0,0,0,0.1); font-size:12px; }
+  canvas { margin:5px; width:95vw !important; height:120px !important; }
+  button { padding:12px 25px; font-size:16px; margin:8px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; min-width:120px; }
+  #startBtn { background-color:#4CAF50; color:white; }
+  #startBtn:hover { background-color:#45a049; }
+  #stopBtn { background-color:#f44336; color:white; }
+  #stopBtn:hover { background-color:#e53935; }
+  #graphs { display:flex; flex-direction:column; align-items:center; width:100%; }
+</style>
+</head>
+<body>
+
+<header>Mobile 3D Fall Detection Simulator</header>
+<div id="dashboard">
+  <div id="status" class="normal">Monitoring...</div>
+  <div id="acceleration">Acceleration: 0 m/s²</div>
+
+  <div id="graphs">
+    <canvas id="xGraph" width="700" height="120"></canvas>
+    <canvas id="yGraph" width="700" height="120"></canvas>
+    <canvas id="zGraph" width="700" height="120"></canvas>
+  </div>
+
+  <div id="3d-container" style="width:95vw; height:300px; margin:10px;"></div>
+
+  <div id="log"></div>
+  <div>
+    <button id="startBtn">Start Detection</button>
+    <button id="stopBtn">Stop Detection</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/OrbitControls.js"></script>
+<script>
+  const FALL_THRESHOLD=3, IMPACT_THRESHOLD=25, MIN_FALL_TIME=200;
+  let falling=false, startTime=null;
+  const maxDataPoints=140;
+  const accelData={x:[],y:[],z:[]};
+
+  const statusEl=document.getElementById('status');
+  const accelEl=document.getElementById('acceleration');
+  const logEl=document.getElementById('log');
+  const canvasX=document.getElementById('xGraph');
+  const canvasY=document.getElementById('yGraph');
+  const canvasZ=document.getElementById('zGraph');
+  const ctxX=canvasX.getContext('2d');
+  const ctxY=canvasY.getContext('2d');
+  const ctxZ=canvasZ.getContext('2d');
+  const audio=new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
+
+  // 3D Setup
+  const container=document.getElementById('3d-container');
+  const scene=new THREE.Scene();
+  scene.background=new THREE.Color(0xe0f7ff);
+  const camera=new THREE.PerspectiveCamera(75, container.clientWidth/container.clientHeight,0.1,1000);
+  camera.position.z=10;
+
+  const renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  container.appendChild(renderer.domElement);
+
+  // Orbit controls for touch/drag/zoom
+  const controls=new THREE.OrbitControls(camera,renderer.domElement);
+  controls.enableDamping=true;
+  controls.dampingFactor=0.05;
+  controls.enablePan=false;
+  controls.minDistance=5;
+  controls.maxDistance=20;
+
+  const cubeSize=6;
+  const geometry=new THREE.BoxGeometry(cubeSize,cubeSize,cubeSize);
+  const edges=new THREE.EdgesGeometry(geometry);
+  const lineMaterial=new THREE.LineBasicMaterial({color:0x888888});
+  const cube=new THREE.LineSegments(edges,lineMaterial);
+  scene.add(cube);
+
+  const sphereGeom=new THREE.SphereGeometry(0.3,32,32);
+  const sphereMat=new THREE.MeshStandardMaterial({color:0x00ff00});
+  const sphere=new THREE.Mesh(sphereGeom,sphereMat);
+  scene.add(sphere);
+
+  const maxTrailPoints=50;
+  let trailPoints=[];
+  const trailGeom=new THREE.BufferGeometry();
+  const trailPositions=new Float32Array(maxTrailPoints*3);
+  const trailColors=new Float32Array(maxTrailPoints*3);
+  trailGeom.setAttribute('position', new THREE.BufferAttribute(trailPositions,3));
+  trailGeom.setAttribute('color', new THREE.BufferAttribute(trailColors,3));
+  const trailMat=new THREE.LineBasicMaterial({vertexColors:true, transparent:true});
+  const trailLine=new THREE.Line(trailGeom, trailMat);
+  scene.add(trailLine);
+
+  scene.add(new THREE.AmbientLight(0xffffff,0.8));
+  const pointLight=new THREE.PointLight(0xffffff,0.8);
+  pointLight.position.set(10,10,10);
+  scene.add(pointLight);
+
+  function logMessage(msg){ const p=document.createElement('p'); p.textContent=msg; logEl.appendChild(p); logEl.scrollTop=logEl.scrollHeight; }
+  function calculateTotalAccel(x,y,z){return Math.sqrt(x*x+y*y+z*z);}
+
+  function handleFallLogic(totalAccel){
+    const currentTime=Date.now();
+    accelEl.textContent=`Acceleration: ${totalAccel.toFixed(2)} m/s²`;
+    if(totalAccel>IMPACT_THRESHOLD) accelEl.style.color='red';
+    else if(totalAccel>FALL_THRESHOLD) accelEl.style.color='orange';
+    else accelEl.style.color='green';
+
+    if(totalAccel<FALL_THRESHOLD){
+      if(!falling){falling=true; startTime=currentTime; statusEl.textContent='Falling...'; statusEl.className='fall';}
+    } else if(totalAccel>IMPACT_THRESHOLD && falling){
+      const duration=currentTime-startTime;
+      if(duration>=MIN_FALL_TIME) fallDetected(duration,totalAccel);
+      falling=false; startTime=null; statusEl.textContent='Monitoring...'; statusEl.className='normal';
+    } else {
+      if(falling && (currentTime-startTime)>2000){
+        logMessage('Fall ended without impact'); falling=false; startTime=null;
+        statusEl.textContent='Monitoring...'; statusEl.className='normal';
+      }
+    }
+  }
+
+  let pulseScale=1, pulseActive=false;
+  function pulseSphere(){ pulseActive=true; pulseScale=1.5; }
+
+  function handleMotionEvent(event){
+    const acc=event.accelerationIncludingGravity;
+    if(acc){
+      const x=acc.x||0, y=acc.y||0, z=acc.z||0;
+      ['x','y','z'].forEach(axis=>{accelData[axis].push(eval(axis)); if(accelData[axis].length>maxDataPoints) accelData[axis].shift();});
+      const totalAccel=calculateTotalAccel(x,y,z);
+      handleFallLogic(totalAccel);
+      drawGraph(ctxX, accelData.x, 'X-axis');
+      drawGraph(ctxY, accelData.y, 'Y-axis');
+      drawGraph(ctxZ, accelData.z, 'Z-axis');
+
+      sphere.position.set(
+        THREE.MathUtils.clamp(x,-cubeSize/2,cubeSize/2),
+        THREE.MathUtils.clamp(y,-cubeSize/2,cubeSize/2),
+        THREE.MathUtils.clamp(z,-cubeSize/2,cubeSize/2)
+      );
+      if(!falling) sphere.material.color.set(0x00ff00);
+
+      // Gradient trail
+      trailPoints.push({pos:sphere.position.clone(), accel:totalAccel});
+      if(trailPoints.length>maxTrailPoints) trailPoints.shift();
+
+      const positions=trailGeom.attributes.position.array;
+      const colors=trailGeom.attributes.color.array;
+      for(let i=0;i<trailPoints.length;i++){
+        const p=trailPoints[i];
+        positions[i*3]=p.pos.x; positions[i*3+1]=p.pos.y; positions[i*3+2]=p.pos.z;
+        const t=Math.min(p.accel/IMPACT_THRESHOLD,1);
+        colors[i*3]=t; colors[i*3+1]=1-t; colors[i*3+2]=0;
+      }
+      trailGeom.setDrawRange(0,trailPoints.length);
+      trailGeom.attributes.position.needsUpdate=true;
+      trailGeom.attributes.color.needsUpdate=true;
+    }
+  }
+
+  function drawGraph(ctx,data,label){
+    ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+    ctx.beginPath();
+    ctx.moveTo(0,ctx.canvas.height-data[0]*5);
+    for(let i=1;i<data.length;i++){ctx.lineTo(i*5,ctx.canvas.height-data[i]*5);}
+    ctx.strokeStyle='blue'; ctx.lineWidth=2; ctx.stroke();
+    const fallY=ctx.canvas.height-FALL_THRESHOLD*5;
+    const impactY=ctx.canvas.height-IMPACT_THRESHOLD*5;
+    ctx.strokeStyle='orange'; ctx.setLineDash([5,5]); ctx.beginPath(); ctx.moveTo(0,fallY); ctx.lineTo(ctx.canvas.width,fallY); ctx.stroke();
+    ctx.strokeStyle='red'; ctx.beginPath(); ctx.moveTo(0,impactY); ctx.lineTo(ctx.canvas.width,impactY); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='black'; ctx.font='12px Arial'; ctx.fillText(label,10,15);
+  }
+
+  function fallDetected(duration,impact){
+    logMessage(`FALL DETECTED! Duration: ${duration.toFixed(0)} ms, Impact: ${impact.toFixed(2)} m/s²`);
+    statusEl.textContent='FALL DETECTED!'; statusEl.className='fall';
+    audio.play().catch(e=>console.log('Sound blocked',e));
+    if(navigator.vibrate) navigator.vibrate([500,200,500]);
+    pulseSphere();
+  }
+
+  function startFallDetection(){
+    if(!('DeviceMotionEvent' in window)){logMessage('DeviceMotion not supported');statusEl.textContent='Not supported';statusEl.className='fall';return;}
+    if(typeof DeviceMotionEvent.requestPermission==='function'){
+      DeviceMotionEvent.requestPermission().then(p=>{
+        if(p==='granted'){window.addEventListener('devicemotion',handleMotionEvent);logMessage('Fall detection started (iOS permission granted)');}
+        else{logMessage('Permission denied'); statusEl.textContent='Permission denied'; statusEl.className='fall';}
+      }).catch(err=>{console.error(err); logMessage('Error requesting permission'); statusEl.textContent='Error'; statusEl.className='fall';});
+    } else{window.addEventListener('devicemotion',handleMotionEvent); logMessage('Fall detection started');}
+  }
+
+  function stopFallDetection(){window.removeEventListener('devicemotion',handleMotionEvent);falling=false;startTime=null;logMessage('Fall detection stopped');statusEl.textContent='Monitoring...';statusEl.className='normal';sphere.material.color.set(0x00ff00);trailPoints.length=0;}
+
+  document.getElementById('startBtn').addEventListener('click', startFallDetection);
+  document.getElementById('stopBtn').addEventListener('click', stopFallDetection);
+
+  function animate(){
+    requestAnimationFrame(animate);
+    cube.rotation.x+=0.003; cube.rotation.y+=0.004;
+    controls.update();
+    if(pulseActive){ sphere.scale.set(pulseScale,pulseScale,pulseScale); pulseScale-=0.05; if(pulseScale<=1){pulseScale=1;pulseActive=false;} }
+    renderer.render(scene,camera);
+  }
+  animate();
+
+  window.addEventListener('resize',()=>{
+    camera.aspect=container.clientWidth/container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth,container.clientHeight);
+  });
+</script>
+
+</body>
+</html>
