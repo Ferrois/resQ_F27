@@ -271,7 +271,6 @@ function Main() {
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext("2d");
       ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-
       stream.getTracks().forEach((track) => track.stop());
 
       const streamFront = await navigator.mediaDevices.getUserMedia({
@@ -288,14 +287,14 @@ function Main() {
         };
       });
 
-      streamFront.getTracks().forEach((track) => track.stop());
-
+      
       const canvas2 = document.createElement("canvas");
       canvas2.width = videoFront.videoWidth;
       canvas2.height = videoFront.videoHeight;
       const ctx2 = canvas2.getContext("2d");
       ctx2.drawImage(videoFront, 0, 0, videoFront.videoWidth, videoFront.videoHeight);
-
+      streamFront.getTracks().forEach((track) => track.stop());
+      
       const finalCanvas = document.createElement("canvas");
       finalCanvas.width = canvas.width + canvas2.width;
       finalCanvas.height = Math.max(canvas.height, canvas2.height);
