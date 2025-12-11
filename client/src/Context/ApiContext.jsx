@@ -8,11 +8,12 @@ import React, {
 } from "react";
 import axios from "axios";
 import useLocalStorage from "../hooks/useLocalStorage";
+import { config } from "../config";
 
 const ApiContext = createContext();
 
-// Base URL for the API - adjust this to match your server URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+// Base URL for the API - uses config.js for environment detection
+const API_BASE_URL = config.API_URL;
 
 export const ApiProvider = ({ children }) => {
   const [auth, setAuth] = useLocalStorage("resQ-auth", {

@@ -16,6 +16,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { useApi } from "../Context/ApiContext";
+import { toaster } from "../components/ui/toaster";
 
 function Login() {
   const navigate = useNavigate();
@@ -32,6 +33,59 @@ function Login() {
     }
   }, [auth?.accessToken, isLoadingSession, navigate]);
 
+  const requestPermissions = async () => {
+    const missingPermissions = [];
+
+    // Request location permission
+    if (navigator.permissions) {
+      try {
+        const locationStatus = await navigator.permissions.query({ name: 'geolocation' });
+        if (locationStatus.state === 'denied' || locationStatus.state === 'prompt') {
+          missingPermissions.push('location');
+        }
+      } catch (err) {
+        // Fallback: try to get location to trigger permission prompt
+        try {
+          await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 1000 });
+          });
+        } catch {
+          missingPermissions.push('location');
+        }
+      }
+    } else {
+      // Fallback for browsers without permissions API
+      try {
+        await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 1000 });
+        });
+      } catch {
+        missingPermissions.push('location');
+      }
+    }
+
+    // Request camera permission
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      stream.getTracks().forEach(track => track.stop()); // Stop the stream immediately
+    } catch (err) {
+      if (err.name === 'NotAllowedError' || err.name === 'NotFoundError') {
+        missingPermissions.push('camera');
+      }
+    }
+
+    // Show toast if permissions are missing
+    if (missingPermissions.length > 0) {
+      const missingList = missingPermissions.join(' and ');
+      toaster.warning({
+        status: 'warning',
+        title: 'Permissions Required',
+        description: `The app may not work correctly without ${missingList} permissions. Please enable them in your browser settings.`,
+        duration: 5000,
+      });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -39,6 +93,8 @@ function Login() {
     const response = await login(username, password);
     setLoading(false);
     if (response.success) {
+      // Request permissions after successful login
+      await requestPermissions();
       navigate("/main");
     } else {
       setError(response.error?.message || "Unable to login");

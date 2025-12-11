@@ -2,10 +2,11 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import { io } from "socket.io-client";
 import { useApi } from "./ApiContext";
 import { useLocationContext } from "./LocationContext";
+import { config } from "../config";
 
 const SocketContext = createContext(null);
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || "http://localhost:8080";
+const SOCKET_URL = config.SOCKET_URL;
 
 export function SocketProvider({ children }) {
   const { auth } = useApi();

@@ -11,6 +11,7 @@ const LocationContext = createContext();
 export function LocationProvider({ children }) {
   const [location, setLocation] = useState(null);
   const [error, setError] = useState(null);
+  const [heading, setHeading] = useState(null);
 
   const fetchLocation = useCallback(() => {
     if (!("geolocation" in navigator)) {
@@ -44,9 +45,55 @@ export function LocationProvider({ children }) {
     return () => clearInterval(interval);
   }, [fetchLocation]);
 
+  // Track device orientation/heading
+  useEffect(() => {
+    if (!window.DeviceOrientationEvent) {
+      // Fallback: try to get heading from geolocation if available
+      if (navigator.geolocation && navigator.geolocation.watchPosition) {
+        navigator.geolocation.watchPosition(
+          (pos) => {
+            if (pos.coords.heading !== null && pos.coords.heading !== undefined) {
+              setHeading(pos.coords.heading);
+            }
+          },
+          () => {},
+          { enableHighAccuracy: true }
+        );
+      }
+      return;
+    }
+
+    const handleOrientation = (event) => {
+      if (event.alpha !== null && event.alpha !== undefined) {
+        // alpha is the compass direction (0-360 degrees)
+        setHeading(event.alpha);
+      }
+    };
+
+    // Request permission for iOS 13+
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission()
+        .then((response) => {
+          if (response === 'granted') {
+            window.addEventListener('deviceorientation', handleOrientation);
+          }
+        })
+        .catch(() => {
+          // Permission denied or error
+        });
+    } else {
+      window.addEventListener('deviceorientation', handleOrientation);
+    }
+
+    return () => {
+      window.removeEventListener('deviceorientation', handleOrientation);
+    };
+  }, []);
+
   const value = {
     location,
     locationError: error,
+    heading,
     refreshLocation: fetchLocation,
   };
 
