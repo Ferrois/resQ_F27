@@ -649,6 +649,9 @@ function Main() {
                             Severity: {selectedEmergency.aiSummary.severity || "Unknown"}
                           </Badge>
                           <Text fontSize="sm" color="gray.300">
+                            Location: {selectedEmergency.aiSummary.location || "Unknown"}
+                          </Text>
+                          <Text fontSize="sm" color="gray.300">
                             Reasoning: {selectedEmergency.aiSummary.reasoning || "No details provided."}
                           </Text>
                           <Separator />

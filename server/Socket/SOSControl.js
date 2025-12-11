@@ -32,6 +32,84 @@ function distanceInMeters(a, b) {
   return R * c;
 }
 
+// Send all still-active nearby emergencies to a specific user (e.g. on subscribe)
+async function sendActiveEmergenciesToUser(userId, io, targetSocketId) {
+  try {
+    const subscriber = await User.findById(userId).select(["location.latitude", "location.longitude"]);
+    const origin = {
+      latitude: toNumber(subscriber?.location?.latitude),
+      longitude: toNumber(subscriber?.location?.longitude),
+    };
+    if (!validateCoords(origin.latitude, origin.longitude)) {
+      return;
+    }
+
+    const now = new Date();
+    const responders = await User.find({
+      _id: { $ne: userId },
+      "location.latitude": { $ne: null },
+      "location.longitude": { $ne: null },
+      emergencies: { $elemMatch: { isActive: true, expiresAt: { $gt: now } } },
+    }).select([
+      "name",
+      "username",
+      "phoneNumber",
+      "medical",
+      "skills",
+      "location.latitude",
+      "location.longitude",
+      "emergencies",
+    ]);
+
+    responders.forEach((user) => {
+      const loc = {
+        latitude: toNumber(user.location?.latitude),
+        longitude: toNumber(user.location?.longitude),
+      };
+      if (!validateCoords(loc.latitude, loc.longitude)) return;
+
+      const distance = distanceInMeters(origin, loc);
+      if (distance > 500000) return;
+
+      const nearestAEDs = findNearestAEDs(loc.latitude, loc.longitude, 5);
+      const requester = user
+        ? {
+            id: user._id,
+            name: user.name,
+            username: user.username,
+            phoneNumber: user.phoneNumber,
+            medical: user.medical,
+            skills: user.skills,
+          }
+        : null;
+
+      user.emergencies
+        ?.filter((emergency) => emergency.isActive && emergency.expiresAt > now)
+        .forEach((emergency) => {
+          const payload = {
+            emergencyId: emergency._id,
+            userId: user._id,
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+            expiresAt: emergency.expiresAt,
+            distance,
+            image: emergency.Image || null,
+            nearestAEDs,
+            aiSummary: null,
+            requester,
+          };
+
+          const sockets = targetSocketId
+            ? [targetSocketId]
+            : Array.from(emergencySubscribers.get(String(userId)) || []);
+          sockets.forEach((socketId) => io.to(socketId).emit("emergency:nearby", payload));
+        });
+    });
+  } catch (err) {
+    console.error("Failed to send active emergencies to user", err);
+  }
+}
+
 async function expireEmergency(userId, emergencyId, delayMs) {
   setTimeout(async () => {
     try {
@@ -56,6 +134,8 @@ function registerSOSHandlers(io) {
         emergencySubscribers.set(userId, new Set());
       }
       emergencySubscribers.get(userId).add(socket.id);
+      // When a user subscribes, send them any currently active nearby emergencies
+      sendActiveEmergenciesToUser(userId, io, socket.id);
     });
 
     socket.on("emergency:unsubscribe", () => {
@@ -128,6 +208,7 @@ function registerSOSHandlers(io) {
               severity: "Unknown",
               reasoning: "AI service unavailable.",
               action: "Proceed with standard protocol.",
+              location: "Unknown",
             };
           }
         } else {
@@ -136,6 +217,7 @@ function registerSOSHandlers(io) {
             severity: "Unknown",
             reasoning: "GROQ_API_KEY not set on server.",
             action: "Proceed with standard protocol.",
+            location: "Unknown",
           };
         }
 

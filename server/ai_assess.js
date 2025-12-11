@@ -37,7 +37,7 @@ async function assessEmergencyWithGroq(base64Image, medicalHistory, apiKey) {
       {
         role: "system",
         content: `
-          You are a medical triage AI. Analyze the image and patient history.
+          You are a medical triage AI. Analyze the image and medical history. Try to infer the location of the image as well.
           CRITICAL RULES:
           1. Return ONLY valid JSON.
           2. Structure: { "condition": string, "severity": "High"|"Medium"|"Low", "reasoning": string, "action": string, "location": string }
@@ -77,7 +77,15 @@ async function assessEmergencyWithGroq(base64Image, medicalHistory, apiKey) {
 
     if (!aiResponseString) throw new Error("Empty response from Groq");
 
-    return JSON.parse(aiResponseString);
+    const parsed = JSON.parse(aiResponseString);
+    // Ensure all fields exist to prevent undefined UI states
+    return {
+      condition: parsed.condition || "Unclear",
+      severity: parsed.severity || "Unknown",
+      reasoning: parsed.reasoning || "No details provided.",
+      action: parsed.action || "Proceed with standard protocol.",
+      location: parsed.location || "Unknown",
+    };
 
   } catch (error) {
     console.error("❌ Assessment Failed:", error.message);
@@ -86,7 +94,8 @@ async function assessEmergencyWithGroq(base64Image, medicalHistory, apiKey) {
       condition: "Error",
       severity: "Unknown",
       reasoning: "AI Service Unavailable.",
-      action: "Call emergency services."
+      action: "Call emergency services.",
+      location: "Unknown",
     };
   }
 }
