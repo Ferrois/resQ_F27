@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Flex,
@@ -19,7 +19,7 @@ import {
   Separator,
   HStack,
 } from "@chakra-ui/react";
-import { FiSettings, FiBell, FiNavigation, FiHeart, FiPhone, FiMapPin, FiInfo } from "react-icons/fi";
+import { FiSettings, FiBell, FiNavigation, FiHeart, FiPhone, FiMapPin, FiInfo, FiActivity } from "react-icons/fi";
 import { toaster } from "../components/ui/toaster";
 import { MapContainer, TileLayer, CircleMarker, Marker } from "react-leaflet";
 import L from "leaflet";
@@ -32,6 +32,7 @@ import { usePushNotifications } from "../hooks/usePushNotifications";
 import ActionGuideDrawer from "../components/app/ActionGuideDrawer";
 import "./main-map.css";
 import useLocalStorage from "../hooks/useLocalStorage";
+import useAccelerometerFallDetection from "../hooks/useAccelerometer";
 
 function Main() {
   const { auth, authRequest, setSession } = useApi();
@@ -52,9 +53,14 @@ function Main() {
     skills: [],
   });
   const [allowEmergencyPhoto] = useLocalStorage("allowEmergencyPhoto", true);
+  const [fallDetectionEnabled] = useLocalStorage("fallDetectionEnabled", true);
   const mapRef = useRef(null);
+  const fallCountdownIntervalRef = useRef(null);
+  const fallAutoSosTimeoutRef = useRef(null);
   const displayName = auth?.user?.name || auth?.user?.fullName || auth?.user?.username || "Not Logged In";
   const mapCenter = location ? [location.lat, location.lng] : [51.505, -0.09];
+  const [isFallPromptOpen, setIsFallPromptOpen] = useState(false);
+  const [fallCountdown, setFallCountdown] = useState(10);
 
   // Initialize medical data from auth
   useEffect(() => {
@@ -183,7 +189,7 @@ function Main() {
     refreshLocation();
   };
 
-  const capturePhoto = async () => {
+  const capturePhoto = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" }, // Use back camera on mobile
@@ -221,9 +227,9 @@ function Main() {
       });
       return null;
     }
-  };
+  }, []);
 
-  const handleEmergencyPress = async () => {
+  const handleEmergencyPress = useCallback(async () => {
     if (!socket) {
       toaster.error({ status: "error", title: "Not connected", description: "Socket connection not ready yet." });
       return;
@@ -301,7 +307,69 @@ function Main() {
         }
       }
     );
-  };
+  }, [socket, location, activeEmergencyId, refreshLocation, allowEmergencyPhoto, capturePhoto]);
+
+  const clearFallTimers = useCallback(() => {
+    if (fallCountdownIntervalRef.current) {
+      clearInterval(fallCountdownIntervalRef.current);
+      fallCountdownIntervalRef.current = null;
+    }
+    if (fallAutoSosTimeoutRef.current) {
+      clearTimeout(fallAutoSosTimeoutRef.current);
+      fallAutoSosTimeoutRef.current = null;
+    }
+  }, []);
+
+  const closeFallPrompt = useCallback(() => {
+    clearFallTimers();
+    setIsFallPromptOpen(false);
+    setFallCountdown(10);
+  }, [clearFallTimers]);
+
+  const triggerAutoSOS = useCallback(() => {
+    clearFallTimers();
+    setIsFallPromptOpen(false);
+    setFallCountdown(10);
+    if (!activeEmergencyId) {
+      handleEmergencyPress();
+    }
+  }, [activeEmergencyId, clearFallTimers, handleEmergencyPress]);
+
+  const handleFallDetected = useCallback(() => {
+    clearFallTimers();
+    setFallCountdown(10);
+    setIsFallPromptOpen(true);
+
+    fallCountdownIntervalRef.current = setInterval(() => {
+      setFallCountdown((prev) => Math.max(prev - 1, 0));
+    }, 1000);
+
+    fallAutoSosTimeoutRef.current = setTimeout(() => {
+      triggerAutoSOS();
+    }, 10000);
+  }, [clearFallTimers, triggerAutoSOS]);
+
+  useEffect(() => {
+    return () => {
+      clearFallTimers();
+    };
+  }, [clearFallTimers]);
+
+  const { supported: accelerometerSupported, isActive: fallDetectionActive, error: accelerometerError } =
+    useAccelerometerFallDetection({
+      enabled: fallDetectionEnabled && !activeEmergencyId,
+      onFallDetected: handleFallDetected,
+    });
+
+  useEffect(() => {
+    if (accelerometerError) {
+      toaster.error({
+        status: "error",
+        title: "Fall detection unavailable",
+        description: accelerometerError,
+      });
+    }
+  }, [accelerometerError]);
 
   useEffect(() => {
     if (!socket) return undefined;
@@ -498,6 +566,20 @@ function Main() {
             <Text fontSize="xs" color="red.300">
               {locationError}
             </Text>
+          )}
+          {fallDetectionEnabled && (
+            <Badge
+              mt="2"
+              colorPalette={accelerometerSupported ? "green" : "gray"}
+              variant="subtle"
+              fontSize="xs"
+            >
+              {accelerometerSupported
+                ? fallDetectionActive
+                  ? "Fall detection active"
+                  : "Fall detection ready"
+                : "Fall detection unavailable on this device"}
+            </Badge>
           )}
         </Box>
         <Flex align="center" gap="2">
@@ -1011,6 +1093,54 @@ function Main() {
               <Dialog.CloseTrigger asChild>
                 <CloseButton size="sm" />
               </Dialog.CloseTrigger>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
+
+      <Dialog.Root
+        open={isFallPromptOpen}
+        onOpenChange={(e) => {
+          if (!e.open) closeFallPrompt();
+        }}
+      >
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content maxW="480px">
+              <Dialog.Header display="flex" justifyContent="space-between" alignItems="center">
+                <Dialog.Title>Are you okay?</Dialog.Title>
+                <CloseButton onClick={closeFallPrompt} />
+              </Dialog.Header>
+              <Dialog.Body>
+                <Stack gap="4">
+                  <Text fontSize="sm" color="gray.700">
+                    We detected a hard fall. If you do not respond within 10 seconds, we will send an SOS automatically.
+                  </Text>
+                  <Badge colorPalette="red" alignSelf="flex-start">
+                    Auto SOS in {fallCountdown}s
+                  </Badge>
+                  <Text fontSize="sm" color="gray.600">
+                    Tap "I'm OK" to dismiss or send SOS now if you need help.
+                  </Text>
+                </Stack>
+              </Dialog.Body>
+              <Dialog.Footer justify="flex-end" gap="3">
+                <Button variant="outline" onClick={closeFallPrompt}>
+                  I'm OK
+                </Button>
+                <Button
+                  colorPalette="red"
+                  onClick={() => {
+                    closeFallPrompt();
+                    if (!activeEmergencyId) {
+                      handleEmergencyPress();
+                    }
+                  }}
+                >
+                  Send SOS now
+                </Button>
+              </Dialog.Footer>
             </Dialog.Content>
           </Dialog.Positioner>
         </Portal>

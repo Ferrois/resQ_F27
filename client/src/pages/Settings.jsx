@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Box, Button, Container, Flex, Heading, Stack, Text, Switch, Card, Separator } from "@chakra-ui/react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiSettings, FiBell } from "react-icons/fi";
+import { FiArrowLeft, FiSettings, FiBell, FiActivity } from "react-icons/fi";
 import { useApi } from "../Context/ApiContext";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import { toaster } from "../components/ui/toaster";
@@ -14,10 +14,17 @@ function Settings() {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [allowEmergencyPhoto, setAllowEmergencyPhoto] = useLocalStorage("allowEmergencyPhoto", true);
+  const [fallDetectionEnabled, setFallDetectionEnabled] = useLocalStorage("fallDetectionEnabled", true);
+  const [accelerometerSupported, setAccelerometerSupported] = useState(false);
 
   useEffect(() => {
     setPushEnabled(isSubscribed);
   }, [isSubscribed]);
+
+  useEffect(() => {
+    const hasSensor = typeof window !== "undefined" && ("DeviceMotionEvent" in window || "Accelerometer" in window);
+    setAccelerometerSupported(hasSensor);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -115,6 +122,42 @@ function Settings() {
               ) : (
                 <Text fontSize="sm" color="gray.500">
                   Push notifications are not supported in this browser.
+                </Text>
+              )}
+            </Card.Body>
+          </Card.Root>
+
+          <Card.Root variant="outline">
+            <Card.Header>
+              <Flex align="center" gap="2">
+                <FiActivity />
+                <Heading size="sm">Fall Detection</Heading>
+              </Flex>
+            </Card.Header>
+            <Card.Body gap="4">
+              <Text color="gray.600" _dark={{ color: "gray.300" }} fontSize="sm">
+                Detect a sudden drop using your device accelerometer. A safety prompt will appear, and SOS will auto-send
+                if you do not respond in time. You can turn this off entirely here.
+              </Text>
+              {accelerometerSupported ? (
+                <Flex justify="space-between" align="center">
+                  <Text fontWeight="medium">
+                    {fallDetectionEnabled ? "Fall detection enabled" : "Fall detection disabled"}
+                  </Text>
+                  <Switch.Root
+                    checked={fallDetectionEnabled}
+                    onCheckedChange={(e) => setFallDetectionEnabled(e.checked)}
+                    colorPalette="blue"
+                    disabled={!accelerometerSupported}
+                  >
+                    <Switch.HiddenInput />
+                    <Switch.Control />
+                    <Switch.Label />
+                  </Switch.Root>
+                </Flex>
+              ) : (
+                <Text fontSize="sm" color="gray.500">
+                  This device does not expose an accelerometer. Fall detection is unavailable.
                 </Text>
               )}
             </Card.Body>
