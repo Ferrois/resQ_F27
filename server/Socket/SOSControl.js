@@ -70,7 +70,13 @@ function registerSOSHandlers(io) {
       const now = new Date();
       const expiresAt = new Date(now.getTime() + 10 * 60 * 1000);
       const emergencyId = new mongoose.Types.ObjectId();
-      const emergency = { _id: emergencyId, isActive: true, createdAt: now, expiresAt };
+      const emergency = { 
+        _id: emergencyId, 
+        isActive: true, 
+        createdAt: now, 
+        expiresAt,
+        Image: payload.image || null
+      };
 
       try {
         await User.findByIdAndUpdate(

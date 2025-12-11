@@ -158,4 +158,27 @@ router.get("/me", authenticateToken, async (req, res) => {
   }
 });
 
+// Update user medical info and skills
+router.put("/medical", authenticateToken, async (req, res) => {
+  try {
+    const { medical, skills } = req.body;
+    const user = await UserSchema.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ type: "error", message: "User not found" });
+    }
+
+    if (medical !== undefined) {
+      user.medical = medical;
+    }
+    if (skills !== undefined) {
+      user.skills = skills;
+    }
+
+    await user.save();
+    res.json({ type: "success", message: "Medical information updated", user: formatUserResponse(user) });
+  } catch (error) {
+    res.status(500).json({ type: "error", message: error.message });
+  }
+});
+
 module.exports = router;

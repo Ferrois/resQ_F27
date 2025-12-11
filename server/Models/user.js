@@ -49,6 +49,10 @@ const EmergencySchema = mongoose.Schema({
   expiresAt: {
     type: Date,
     required: true
+  },
+  Image: {
+    type: String,
+    required: false
   }
 })
 
