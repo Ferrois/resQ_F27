@@ -550,7 +550,7 @@ function Main() {
           onClick={handleEmergencyPress}
           isLoading={isSendingSOS}
         >
-          {activeEmergencyId ? "PRESS TO CANCEL" : "EMERGENCY PRESS HERE"}
+          {activeEmergencyId ? "CANCEL" : "EMERGENCY"}
         </Button>
       </Box>
 

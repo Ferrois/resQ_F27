@@ -84,8 +84,6 @@ function BpmTimer({ bpm = 103 }) {
   useEffect(() => {
     if (isRunning) {
       const intervalMs = (60 / bpm) * 1000; // Convert BPM to milliseconds
-      // Play immediately
-      playBeep();
       // Then play at regular intervals
       intervalRef.current = setInterval(() => {
         playBeep();
