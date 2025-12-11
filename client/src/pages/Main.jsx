@@ -92,9 +92,8 @@ function Main() {
       <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
         <circle cx="${size / 2}" cy="${size / 2}" r="8" fill="#3182ce" stroke="#fff" stroke-width="2"/>
         <polygon 
-          points="${size / 2},${size / 2} ${size / 2 + coneLength * Math.sin(((angle - 90) * Math.PI) / 180)},${
-      size / 2 - coneLength * Math.cos(((angle - 90) * Math.PI) / 180)
-    } ${size / 2 + 8 * Math.sin(((angle - 90) * Math.PI) / 180)},${size / 2 - 8 * Math.cos(((angle - 90) * Math.PI) / 180)}" 
+          points="${size / 2},${size / 2} ${size / 2 + coneLength * Math.sin(((angle - 90) * Math.PI) / 180)},${size / 2 - coneLength * Math.cos(((angle - 90) * Math.PI) / 180)
+      } ${size / 2 + 8 * Math.sin(((angle - 90) * Math.PI) / 180)},${size / 2 - 8 * Math.cos(((angle - 90) * Math.PI) / 180)}" 
           fill="#3182ce" 
           stroke="#fff" 
           stroke-width="1"
@@ -519,9 +518,7 @@ function Main() {
           >
             <FiHeart />
           </IconButton>
-          <IconButton aria-label="Notifications" variant="ghost" color="white" _hover={{ bg: "whiteAlpha.200" }}>
-            <FiBell />
-          </IconButton>
+
           <IconButton aria-label="Settings" as={RouterLink} to="/settings" variant="ghost" color="white">
             <FiSettings />
           </IconButton>
@@ -559,7 +556,7 @@ function Main() {
 
       {/* AED Information Message */}
       {(activeEmergencyId && nearestAEDs.length > 0) ||
-      nearbyEmergencies.some((em) => em.nearestAEDs && em.nearestAEDs.length > 0) ? (
+        nearbyEmergencies.some((em) => em.nearestAEDs && em.nearestAEDs.length > 0) ? (
         <Box
           position="fixed"
           top="80px"
