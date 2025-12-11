@@ -6,17 +6,20 @@ import { SocketProvider } from "./Context/SocketContext";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import AppRoutes from "./routes";
+import { DarkMode } from "./components/ui/color-mode";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <Provider>
       <ApiProvider>
-        <LocationProvider>
-          <SocketProvider>
-            <AppRoutes />
-            <Toaster />
-          </SocketProvider>
-        </LocationProvider>
+        <DarkMode>
+          <LocationProvider>
+            <SocketProvider>
+              <AppRoutes />
+              <Toaster />
+            </SocketProvider>
+          </LocationProvider>
+        </DarkMode>
       </ApiProvider>
     </Provider>
   </React.StrictMode>

@@ -1,203 +1,101 @@
 import React, { useEffect, useState, useRef } from "react";
-
-import { Badge, Box, Button, Drawer, Flex, Heading, Icon, List, ListItem, Progress, Stack, Tabs, Text } from "@chakra-ui/react";
-
+import { Badge, Button, Drawer, Flex, Heading, Icon, List, Stack, Tabs, Text } from "@chakra-ui/react";
 import { LuCheck, LuHeartPulse, LuTimer, LuPlay, LuSquare } from "react-icons/lu";
 
-
-
 const CPR_PHASES = [
-
   {
-
     label: "30 Compressions",
-
     duration: 20,
-
     cue: "Push hard and fast at 100–120/min, depth 5 cm, full recoil.",
-
   },
-
   {
-
     label: "2 Rescue Breaths",
-
     duration: 6,
-
     cue: "Head tilt, chin lift, pinch nose, each breath ~1 sec watching chest rise.",
-
   },
-
 ];
 
-
-
 const quickGuides = {
-
   cpr: [
-
     "Check responsiveness, call 995, place on a firm surface.",
-
     "Kneel at the chest, heel of hand at center of sternum, interlock hands.",
-
     "Give 30 compressions at 100–120/min, depth ~5 cm; allow full recoil.",
-
     "Open airway (head tilt–chin lift). Pinch nose and seal your mouth.",
-
     "Give 2 slow breaths (1 sec each). Chest should rise.",
-
     "Repeat 30 compressions + 2 breaths until help arrives or an AED is ready.",
-
   ],
-
   defib: [
-
     "Turn on the AED and follow voice prompts.",
-
     "Expose and dry the chest; remove medication patches if present (use gloves).",
-
     "Place pads: upper right chest and lower left side, per diagram.",
-
     "Stop touching the patient. Let the AED analyze rhythm.",
-
     "If advised, loudly say “clear” and press shock. Ensure no one is touching.",
-
     "Resume CPR immediately for 2 minutes, then let AED re-analyze.",
-
   ],
-
   heimlich: [
-
     "Confirm severe choking (can’t speak/cough). Call 995.",
-
     "Stand behind, one foot forward for balance.",
-
     "Make a fist above the navel, thumb in; grasp with other hand.",
-
     "Deliver quick upward abdominal thrusts until the object clears.",
-
     "If they become unresponsive, lower to the ground and start CPR.",
-
   ],
-
 };
 
-
-
 function StepList({ steps }) {
-
   return (
-
     <List.Root spacing="3">
-
       {steps.map((step, idx) => (
-
         <List.Item key={idx} display="flex" gap="3">
-
           <Icon as={LuCheck} color="green.500" boxSize="5" />
-
           <Text>{step}</Text>
-
         </List.Item>
-
       ))}
-
     </List.Root>
-
   );
-
 }
 
-
-
 function BpmTimer({ bpm = 103 }) {
-
   const [isRunning, setIsRunning] = useState(false);
-
   const intervalRef = useRef(null);
-
   const audioContextRef = useRef(null);
 
-
-
   // Generate a beep sound using Web Audio API
-
   const playBeep = () => {
-
     if (!audioContextRef.current) {
-
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-
     }
-
     const audioContext = audioContextRef.current;
-
     const oscillator = audioContext.createOscillator();
-
     const gainNode = audioContext.createGain();
 
-
-
     oscillator.connect(gainNode);
-
     gainNode.connect(audioContext.destination);
 
-
-
     oscillator.frequency.value = 800; // Beep frequency in Hz
-
     oscillator.type = 'sine';
 
-
-
     gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
 
-
-
     oscillator.start(audioContext.currentTime);
-
     oscillator.stop(audioContext.currentTime + 0.1);
-
   };
 
-
-
   useEffect(() => {
-
     if (isRunning) {
-
       const intervalMs = (60 / bpm) * 1000; // Convert BPM to milliseconds
-
-
-
       // Play immediately
-
       playBeep();
-
-
-
       // Then play at regular intervals
-
       intervalRef.current = setInterval(() => {
-
         playBeep();
-
       }, intervalMs);
-
     } else {
-
       if (intervalRef.current) {
-
         clearInterval(intervalRef.current);
-
         intervalRef.current = null;
-
       }
-
     }
-
 
 
     return () => {
@@ -348,10 +246,6 @@ function CprTimer() {
   const currentPhase = CPR_PHASES[state.phaseIndex];
 
   const phaseDuration = currentPhase.duration;
-
-  const progressValue = ((phaseDuration - state.remaining) / phaseDuration) * 100;
-
-
 
   const handleReset = () => {
 

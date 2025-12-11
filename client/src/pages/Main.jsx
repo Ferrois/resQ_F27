@@ -1,8 +1,27 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Box, Flex, Heading, IconButton, Text, Button, Stack, Dialog, Portal, Field, Input, Textarea, NativeSelect, CloseButton, Card, Badge, Separator, HStack } from "@chakra-ui/react";
+import {
+  Box,
+  Flex,
+  Heading,
+  IconButton,
+  Text,
+  Button,
+  Stack,
+  Dialog,
+  Portal,
+  Field,
+  Input,
+  Textarea,
+  NativeSelect,
+  CloseButton,
+  Card,
+  Badge,
+  Separator,
+  HStack,
+} from "@chakra-ui/react";
 import { FiSettings, FiBell, FiNavigation, FiHeart, FiPhone, FiMapPin, FiInfo } from "react-icons/fi";
 import { toaster } from "../components/ui/toaster";
-import { MapContainer, TileLayer, CircleMarker, Popup, Marker } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, Marker } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Link as RouterLink } from "react-router-dom";
@@ -25,10 +44,11 @@ function Main() {
   const [isMedicalDialogOpen, setIsMedicalDialogOpen] = useState(false);
   const [selectedEmergency, setSelectedEmergency] = useState(null);
   const [selectedAED, setSelectedAED] = useState(null);
+  const [isUserInfoDialogOpen, setIsUserInfoDialogOpen] = useState(false);
   const [isSavingMedical, setIsSavingMedical] = useState(false);
   const [medicalData, setMedicalData] = useState({
     medical: [],
-    skills: []
+    skills: [],
   });
   const mapRef = useRef(null);
   const displayName = auth?.user?.name || auth?.user?.fullName || auth?.user?.username || "Not Logged In";
@@ -39,7 +59,7 @@ function Main() {
     if (auth?.user) {
       setMedicalData({
         medical: auth.user.medical || [],
-        skills: auth.user.skills || []
+        skills: auth.user.skills || [],
       });
     }
   }, [auth?.user]);
@@ -70,7 +90,9 @@ function Main() {
       <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
         <circle cx="${size / 2}" cy="${size / 2}" r="8" fill="#3182ce" stroke="#fff" stroke-width="2"/>
         <polygon 
-          points="${size / 2},${size / 2} ${size / 2 + coneLength * Math.sin((angle - 90) * Math.PI / 180)},${size / 2 - coneLength * Math.cos((angle - 90) * Math.PI / 180)} ${size / 2 + 8 * Math.sin((angle - 90) * Math.PI / 180)},${size / 2 - 8 * Math.cos((angle - 90) * Math.PI / 180)}" 
+          points="${size / 2},${size / 2} ${size / 2 + coneLength * Math.sin(((angle - 90) * Math.PI) / 180)},${
+      size / 2 - coneLength * Math.cos(((angle - 90) * Math.PI) / 180)
+    } ${size / 2 + 8 * Math.sin(((angle - 90) * Math.PI) / 180)},${size / 2 - 8 * Math.cos(((angle - 90) * Math.PI) / 180)}" 
           fill="#3182ce" 
           stroke="#fff" 
           stroke-width="1"
@@ -136,7 +158,19 @@ function Main() {
 
   useEffect(() => {
     if (location && mapRef.current) {
-      mapRef.current.setView([location.lat, location.lng], 15);
+      // if location is about the same location as the map, dont set
+      if (mapRef.current) {
+        const map = mapRef.current;
+        const currentCenter = map.getCenter();
+        // Use a small threshold for latitude/longitude (in degrees)
+        const threshold = 2;
+        if (
+          Math.abs(currentCenter.lat - location.lat) > threshold ||
+          Math.abs(currentCenter.lng - location.lng) > threshold
+        ) {
+          map.setView([location.lat, location.lng], 15);
+        }
+      }
     }
   }, [location]);
 
@@ -151,9 +185,9 @@ function Main() {
   const capturePhoto = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' } // Use back camera on mobile
+        video: { facingMode: "environment" }, // Use back camera on mobile
       });
-      const video = document.createElement('video');
+      const video = document.createElement("video");
       video.srcObject = stream;
       video.play();
 
@@ -165,20 +199,20 @@ function Main() {
         };
       });
 
-      const canvas = document.createElement('canvas');
+      const canvas = document.createElement("canvas");
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
       ctx.drawImage(video, 0, 0);
 
       // Stop the video stream
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach((track) => track.stop());
 
       // Convert to base64
-      const base64Image = canvas.toDataURL('image/jpeg', 0.8);
+      const base64Image = canvas.toDataURL("image/jpeg", 0.8);
       return base64Image;
     } catch (error) {
-      console.error('Error capturing photo:', error);
+      console.error("Error capturing photo:", error);
       toaster.warning({
         status: "warning",
         title: "Camera unavailable",
@@ -195,7 +229,11 @@ function Main() {
     }
 
     if (!location?.lat || !location?.lng) {
-      toaster.error({ status: "error", title: "Location unavailable", description: "We need your location before raising an emergency." });
+      toaster.error({
+        status: "error",
+        title: "Location unavailable",
+        description: "We need your location before raising an emergency.",
+      });
       refreshLocation();
       return;
     }
@@ -291,48 +329,44 @@ function Main() {
   }, [socket]);
 
   const handleAddMedical = () => {
-    setMedicalData(prev => ({
+    setMedicalData((prev) => ({
       ...prev,
-      medical: [...prev.medical, { condition: "", treatment: "", remarks: "" }]
+      medical: [...prev.medical, { condition: "", treatment: "", remarks: "" }],
     }));
   };
 
   const handleRemoveMedical = (index) => {
-    setMedicalData(prev => ({
+    setMedicalData((prev) => ({
       ...prev,
-      medical: prev.medical.filter((_, i) => i !== index)
+      medical: prev.medical.filter((_, i) => i !== index),
     }));
   };
 
   const handleUpdateMedical = (index, field, value) => {
-    setMedicalData(prev => ({
+    setMedicalData((prev) => ({
       ...prev,
-      medical: prev.medical.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
-      )
+      medical: prev.medical.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
     }));
   };
 
   const handleAddSkill = () => {
-    setMedicalData(prev => ({
+    setMedicalData((prev) => ({
       ...prev,
-      skills: [...prev.skills, { name: "", level: "adequate" }]
+      skills: [...prev.skills, { name: "", level: "adequate" }],
     }));
   };
 
   const handleRemoveSkill = (index) => {
-    setMedicalData(prev => ({
+    setMedicalData((prev) => ({
       ...prev,
-      skills: prev.skills.filter((_, i) => i !== index)
+      skills: prev.skills.filter((_, i) => i !== index),
     }));
   };
 
   const handleUpdateSkill = (index, field, value) => {
-    setMedicalData(prev => ({
+    setMedicalData((prev) => ({
       ...prev,
-      skills: prev.skills.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
-      )
+      skills: prev.skills.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
     }));
   };
 
@@ -340,8 +374,8 @@ function Main() {
     setIsSavingMedical(true);
     try {
       const response = await authRequest("PUT", "/user/medical", {
-        medical: medicalData.medical.filter(m => m.condition.trim() !== ""),
-        skills: medicalData.skills.filter(s => s.name.trim() !== "")
+        medical: medicalData.medical.filter((m) => m.condition.trim() !== ""),
+        skills: medicalData.skills.filter((s) => s.name.trim() !== ""),
       });
 
       if (response.success) {
@@ -387,45 +421,11 @@ function Main() {
           {location && (
             <>
               {userIcon ? (
-                <Marker position={[location.lat, location.lng]} icon={userIcon}>
-                  <Popup>
-                    <Stack spacing={2}>
-                      <Heading size="sm">{displayName}</Heading>
-                      <Text fontSize="sm" color="gray.700">
-                        Accuracy: {location.accuracy ? `${Math.round(location.accuracy)}m` : "n/a"}
-                      </Text>
-                      <Box>
-                        <Text fontWeight="semibold">Medical</Text>
-                        {auth?.user?.medical?.length ? (
-                          auth.user.medical.map((item, idx) => (
-                            <Text key={idx} fontSize="sm">
-                              {item.condition}
-                              {item.treatment ? ` - ${item.treatment}` : ""}
-                            </Text>
-                          ))
-                        ) : (
-                          <Text fontSize="sm" color="gray.600">
-                            No medical info
-                          </Text>
-                        )}
-                      </Box>
-                      <Box>
-                        <Text fontWeight="semibold">Skills</Text>
-                        {auth?.user?.skills?.length ? (
-                          auth.user.skills.map((skill, idx) => (
-                            <Text key={idx} fontSize="sm">
-                              {skill.name} ({skill.level})
-                            </Text>
-                          ))
-                        ) : (
-                          <Text fontSize="sm" color="gray.600">
-                            No skills listed
-                          </Text>
-                        )}
-                      </Box>
-                    </Stack>
-                  </Popup>
-                </Marker>
+                <Marker
+                  position={[location.lat, location.lng]}
+                  icon={userIcon}
+                  eventHandlers={{ click: () => setIsUserInfoDialogOpen(true) }}
+                />
               ) : (
                 <CircleMarker
                   center={[location.lat, location.lng]}
@@ -435,45 +435,8 @@ function Main() {
                     fillColor: "#63b3ed",
                     fillOpacity: 0.8,
                   }}
-                >
-                  <Popup>
-                    <Stack spacing={2}>
-                      <Heading size="sm">{displayName}</Heading>
-                      <Text fontSize="sm" color="gray.700">
-                        Accuracy: {location.accuracy ? `${Math.round(location.accuracy)}m` : "n/a"}
-                      </Text>
-                      <Box>
-                        <Text fontWeight="semibold">Medical</Text>
-                        {auth?.user?.medical?.length ? (
-                          auth.user.medical.map((item, idx) => (
-                            <Text key={idx} fontSize="sm">
-                              {item.condition}
-                              {item.treatment ? ` - ${item.treatment}` : ""}
-                            </Text>
-                          ))
-                        ) : (
-                          <Text fontSize="sm" color="gray.600">
-                            No medical info
-                          </Text>
-                        )}
-                      </Box>
-                      <Box>
-                        <Text fontWeight="semibold">Skills</Text>
-                        {auth?.user?.skills?.length ? (
-                          auth.user.skills.map((skill, idx) => (
-                            <Text key={idx} fontSize="sm">
-                              {skill.name} ({skill.level})
-                            </Text>
-                          ))
-                        ) : (
-                          <Text fontSize="sm" color="gray.600">
-                            No skills listed
-                          </Text>
-                        )}
-                      </Box>
-                    </Stack>
-                  </Popup>
-                </CircleMarker>
+                  eventHandlers={{ click: () => setIsUserInfoDialogOpen(true) }}
+                />
               )}
             </>
           )}
@@ -491,28 +454,32 @@ function Main() {
             />
           ))}
           {/* Display AEDs for active emergency (user's own emergency) */}
-          {activeEmergencyId && nearestAEDs.map((aed, idx) => (
-            <Marker
-              key={`aed-${idx}`}
-              position={[aed.latitude, aed.longitude]}
-              icon={aedIcon}
-              eventHandlers={{
-                click: () => setSelectedAED(aed),
-              }}
-            />
-          ))}
-          {/* Display AEDs for nearby emergencies (for responders) */}
-          {nearbyEmergencies.map((em) => 
-            em.nearestAEDs && Array.isArray(em.nearestAEDs) && em.nearestAEDs.map((aed, idx) => (
+          {activeEmergencyId &&
+            nearestAEDs.map((aed, idx) => (
               <Marker
-                key={`aed-${em.emergencyId}-${idx}`}
+                key={`aed-${idx}`}
                 position={[aed.latitude, aed.longitude]}
                 icon={aedIcon}
                 eventHandlers={{
                   click: () => setSelectedAED(aed),
                 }}
               />
-            ))
+            ))}
+          {/* Display AEDs for nearby emergencies (for responders) */}
+          {nearbyEmergencies.map(
+            (em) =>
+              em.nearestAEDs &&
+              Array.isArray(em.nearestAEDs) &&
+              em.nearestAEDs.map((aed, idx) => (
+                <Marker
+                  key={`aed-${em.emergencyId}-${idx}`}
+                  position={[aed.latitude, aed.longitude]}
+                  icon={aedIcon}
+                  eventHandlers={{
+                    click: () => setSelectedAED(aed),
+                  }}
+                />
+              ))
           )}
         </MapContainer>
       </Box>
@@ -530,10 +497,18 @@ function Main() {
           )}
         </Box>
         <Flex align="center" gap="2">
-          <IconButton 
-            aria-label="Medical Information" 
-            variant="ghost" 
-            color="white" 
+          <ActionGuideDrawer
+            trigger={
+              <Button aria-label="Action Guide" variant="subtle" _hover={{ bg: "whiteAlpha.200" }}>
+                <FiInfo />
+                {"Safety Guide"}
+              </Button>
+            }
+          />
+          <IconButton
+            aria-label="Medical Information"
+            variant="ghost"
+            color="white"
             _hover={{ bg: "whiteAlpha.200" }}
             onClick={() => setIsMedicalDialogOpen(true)}
           >
@@ -578,7 +553,8 @@ function Main() {
       </Box>
 
       {/* AED Information Message */}
-      {(activeEmergencyId && nearestAEDs.length > 0) || nearbyEmergencies.some(em => em.nearestAEDs && em.nearestAEDs.length > 0) ? (
+      {(activeEmergencyId && nearestAEDs.length > 0) ||
+      nearbyEmergencies.some((em) => em.nearestAEDs && em.nearestAEDs.length > 0) ? (
         <Box
           position="fixed"
           top="80px"
@@ -599,7 +575,12 @@ function Main() {
         </Box>
       ) : null}
 
-      <Dialog.Root open={!!selectedEmergency} onOpenChange={(e) => { if (!e.open) setSelectedEmergency(null); }}>
+      <Dialog.Root
+        open={!!selectedEmergency}
+        onOpenChange={(e) => {
+          if (!e.open) setSelectedEmergency(null);
+        }}
+      >
         <Portal>
           <Dialog.Backdrop />
           <Dialog.Positioner>
@@ -640,7 +621,9 @@ function Main() {
                   <Box>
                     <HStack mb="2" gap="2">
                       <FiPhone size="16" />
-                      <Text fontWeight="semibold" fontSize="sm">Contact</Text>
+                      <Text fontWeight="semibold" fontSize="sm">
+                        Contact
+                      </Text>
                     </HStack>
                     <Text fontSize="sm" color="gray.700" pl="6">
                       {selectedEmergency?.requester?.phoneNumber || "N/A"}
@@ -651,7 +634,9 @@ function Main() {
                     <Box>
                       <HStack mb="3" gap="2">
                         <FiHeart size="16" />
-                        <Text fontWeight="semibold" fontSize="sm">Medical History</Text>
+                        <Text fontWeight="semibold" fontSize="sm">
+                          Medical History
+                        </Text>
                       </HStack>
                       <Stack gap="2">
                         {selectedEmergency.requester.medical.map((item, idx) => (
@@ -681,18 +666,16 @@ function Main() {
                     <Box>
                       <HStack mb="3" gap="2">
                         <FiInfo size="16" />
-                        <Text fontWeight="semibold" fontSize="sm">Skills</Text>
+                        <Text fontWeight="semibold" fontSize="sm">
+                          Skills
+                        </Text>
                       </HStack>
                       <Flex wrap="wrap" gap="2">
                         {selectedEmergency.requester.skills.map((skill, idx) => (
                           <Badge
                             key={idx}
                             colorPalette={
-                              skill.level === "professional"
-                                ? "green"
-                                : skill.level === "proficient"
-                                ? "blue"
-                                : "gray"
+                              skill.level === "professional" ? "green" : skill.level === "proficient" ? "blue" : "gray"
                             }
                             variant="subtle"
                           >
@@ -712,7 +695,65 @@ function Main() {
         </Portal>
       </Dialog.Root>
 
-      <Dialog.Root open={!!selectedAED} onOpenChange={(e) => { if (!e.open) setSelectedAED(null); }}>
+      <Dialog.Root open={isUserInfoDialogOpen} onOpenChange={(e) => setIsUserInfoDialogOpen(e.open)}>
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content maxW="480px" maxH="70vh" overflowY="auto">
+              <Dialog.Header display="flex" justifyContent="space-between" alignItems="center">
+                <Dialog.Title>{displayName}</Dialog.Title>
+                <CloseButton onClick={() => setIsUserInfoDialogOpen(false)} />
+              </Dialog.Header>
+              <Dialog.Body>
+                <Stack spacing="4">
+                  <Text fontSize="sm" color="gray.700">
+                    Accuracy: {location?.accuracy ? `${Math.round(location.accuracy)}m` : "n/a"}
+                  </Text>
+                  <Box>
+                    <Text fontWeight="semibold">Medical</Text>
+                    {auth?.user?.medical?.length ? (
+                      auth.user.medical.map((item, idx) => (
+                        <Text key={idx} fontSize="sm">
+                          {item.condition}
+                          {item.treatment ? ` - ${item.treatment}` : ""}
+                        </Text>
+                      ))
+                    ) : (
+                      <Text fontSize="sm" color="gray.600">
+                        No medical info
+                      </Text>
+                    )}
+                  </Box>
+                  <Box>
+                    <Text fontWeight="semibold">Skills</Text>
+                    {auth?.user?.skills?.length ? (
+                      auth.user.skills.map((skill, idx) => (
+                        <Text key={idx} fontSize="sm">
+                          {skill.name} ({skill.level})
+                        </Text>
+                      ))
+                    ) : (
+                      <Text fontSize="sm" color="gray.600">
+                        No skills listed
+                      </Text>
+                    )}
+                  </Box>
+                </Stack>
+              </Dialog.Body>
+              <Dialog.Footer justify="flex-end">
+                <Button onClick={() => setIsUserInfoDialogOpen(false)}>Close</Button>
+              </Dialog.Footer>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
+
+      <Dialog.Root
+        open={!!selectedAED}
+        onOpenChange={(e) => {
+          if (!e.open) setSelectedAED(null);
+        }}
+      >
         <Portal>
           <Dialog.Backdrop />
           <Dialog.Positioner>
@@ -747,7 +788,9 @@ function Main() {
                   <Box>
                     <HStack mb="2" gap="2">
                       <FiMapPin size="16" />
-                      <Text fontWeight="semibold" fontSize="sm">Location Details</Text>
+                      <Text fontWeight="semibold" fontSize="sm">
+                        Location Details
+                      </Text>
                     </HStack>
                     <Card.Root variant="subtle" size="sm">
                       <Card.Body gap="2" py="2">
@@ -791,7 +834,8 @@ function Main() {
                                 Address
                               </Text>
                               <Text fontSize="sm" mt="1">
-                                {selectedAED.houseNumber ? `${selectedAED.houseNumber} ` : ""}{selectedAED.roadName}
+                                {selectedAED.houseNumber ? `${selectedAED.houseNumber} ` : ""}
+                                {selectedAED.roadName}
                               </Text>
                             </Box>
                           </>
@@ -822,18 +866,15 @@ function Main() {
                   <Box>
                     <Flex justify="space-between" align="center" mb="4">
                       <Heading size="sm">Medical Conditions</Heading>
-                      <Button size="sm" onClick={handleAddMedical}>Add Condition</Button>
+                      <Button size="sm" onClick={handleAddMedical}>
+                        Add Condition
+                      </Button>
                     </Flex>
                     <Stack gap="4">
                       {medicalData.medical.map((item, index) => (
                         <Box key={index} p="4" borderWidth="1px" borderRadius="md">
                           <Flex justify="flex-end" mb="2">
-                            <IconButton
-                              size="sm"
-                              variant="ghost"
-                              colorPalette="red"
-                              onClick={() => handleRemoveMedical(index)}
-                            >
+                            <IconButton size="sm" variant="ghost" colorPalette="red" onClick={() => handleRemoveMedical(index)}>
                               ×
                             </IconButton>
                           </Flex>
@@ -866,7 +907,9 @@ function Main() {
                         </Box>
                       ))}
                       {medicalData.medical.length === 0 && (
-                        <Text color="gray.500" fontSize="sm">No medical conditions added yet.</Text>
+                        <Text color="gray.500" fontSize="sm">
+                          No medical conditions added yet.
+                        </Text>
                       )}
                     </Stack>
                   </Box>
@@ -874,18 +917,15 @@ function Main() {
                   <Box>
                     <Flex justify="space-between" align="center" mb="4">
                       <Heading size="sm">Skills</Heading>
-                      <Button size="sm" onClick={handleAddSkill}>Add Skill</Button>
+                      <Button size="sm" onClick={handleAddSkill}>
+                        Add Skill
+                      </Button>
                     </Flex>
                     <Stack gap="4">
                       {medicalData.skills.map((skill, index) => (
                         <Box key={index} p="4" borderWidth="1px" borderRadius="md">
                           <Flex justify="flex-end" mb="2">
-                            <IconButton
-                              size="sm"
-                              variant="ghost"
-                              colorPalette="red"
-                              onClick={() => handleRemoveSkill(index)}
-                            >
+                            <IconButton size="sm" variant="ghost" colorPalette="red" onClick={() => handleRemoveSkill(index)}>
                               ×
                             </IconButton>
                           </Flex>
@@ -916,7 +956,9 @@ function Main() {
                         </Box>
                       ))}
                       {medicalData.skills.length === 0 && (
-                        <Text color="gray.500" fontSize="sm">No skills added yet.</Text>
+                        <Text color="gray.500" fontSize="sm">
+                          No skills added yet.
+                        </Text>
                       )}
                     </Stack>
                   </Box>
@@ -926,11 +968,7 @@ function Main() {
                 <Dialog.ActionTrigger asChild>
                   <Button variant="outline">Cancel</Button>
                 </Dialog.ActionTrigger>
-                <Button
-                  colorPalette="blue"
-                  onClick={handleSaveMedical}
-                  isLoading={isSavingMedical}
-                >
+                <Button colorPalette="blue" onClick={handleSaveMedical} isLoading={isSavingMedical}>
                   Save
                 </Button>
               </Dialog.Footer>
