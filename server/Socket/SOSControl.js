@@ -126,6 +126,7 @@ function registerSOSHandlers(io) {
                 longitude,
                 expiresAt,
                 distance,
+                image: emergency.Image || null,
                 requester: requester
                   ? {
                       id: requester._id,
