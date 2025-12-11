@@ -287,14 +287,13 @@ function Main() {
         };
       });
 
-      
       const canvas2 = document.createElement("canvas");
       canvas2.width = videoFront.videoWidth;
       canvas2.height = videoFront.videoHeight;
       const ctx2 = canvas2.getContext("2d");
       ctx2.drawImage(videoFront, 0, 0, videoFront.videoWidth, videoFront.videoHeight);
       streamFront.getTracks().forEach((track) => track.stop());
-      
+
       const finalCanvas = document.createElement("canvas");
       finalCanvas.width = canvas.width + canvas2.width;
       finalCanvas.height = Math.max(canvas.height, canvas2.height);
@@ -319,6 +318,8 @@ function Main() {
 
     // Provide immediate audible feedback when SOS is pressed
     playModerateWarning();
+    setIsSendingSOS(true);
+
 
     if (!location?.lat || !location?.lng) {
       toaster.error({
@@ -357,7 +358,6 @@ function Main() {
       return;
     }
 
-    setIsSendingSOS(true);
 
     // Capture photo before sending emergency (respect user setting and latest storage value)
     const photoAllowed =
@@ -766,7 +766,7 @@ function Main() {
           shadow="lg"
           fontWeight="bold"
           onClick={handleEmergencyPress}
-          isLoading={isSendingSOS}
+          loading={isSendingSOS}
         >
           {activeEmergencyId ? "CANCEL" : "EMERGENCY"}
         </Button>
