@@ -651,7 +651,7 @@ function Main() {
             trigger={
               <Button aria-label="Action Guide" variant="subtle" _hover={{ bg: "whiteAlpha.200" }}>
                 <FiInfo />
-                {"Safety Guide"}
+                {"Guides"}
               </Button>
             }
           />
@@ -689,7 +689,7 @@ function Main() {
         <Button
           size="lg"
           px="10"
-          py="6"
+          py="6"         
           colorPalette={activeEmergencyId ? "orange" : "red"}
           shadow="lg"
           fontWeight="bold"

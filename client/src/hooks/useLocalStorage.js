@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export default function useLocalStorage(key, initialValue) {
   const [storedValue, setStoredValue] = useState(() => {
@@ -25,20 +25,5 @@ export default function useLocalStorage(key, initialValue) {
       console.log(error);
     }
   };
-  // Keep value in sync across tabs/components when localStorage changes
-  useEffect(() => {
-    if (typeof window === "undefined") return undefined;
-    const handler = (event) => {
-      if (event.key !== key) return;
-      try {
-        const newValue = event.newValue ? JSON.parse(event.newValue) : initialValue;
-        setStoredValue(newValue);
-      } catch (error) {
-        console.log(error);
-      }
-    };
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
-  }, [key, initialValue]);
   return [storedValue, setValue];
 }

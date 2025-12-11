@@ -104,6 +104,9 @@ async function sendNotificationToUser(userId, payload) {
 
         // If subscription is invalid, remove it
         if (error.statusCode === 410 || error.statusCode === 404) {
+          console.warn(
+            `Push subscription expired or unsubscribed for user ${sub.userId} at endpoint ${sub.endpoint}; deleting record.`
+          );
           await PushSubscription.findByIdAndDelete(sub._id);
         }
 
@@ -156,6 +159,9 @@ async function sendNotificationToUsers(userIds, payload) {
 
         // If subscription is invalid, remove it
         if (error.statusCode === 410 || error.statusCode === 404) {
+          console.warn(
+            `Push subscription expired or unsubscribed for user ${sub.userId} at endpoint ${sub.endpoint}; deleting record.`
+          );
           await PushSubscription.findByIdAndDelete(sub._id);
         }
 

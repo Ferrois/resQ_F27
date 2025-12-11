@@ -151,6 +151,40 @@ function registerSOSHandlers(io) {
         return;
       }
 
+      // Cancel any existing active emergencies for this user before creating a new one
+      try {
+        const userWithEmergencies = await User.findById(userId).select(["emergencies", "username", "name"]);
+        const activeEmergencyIds =
+          userWithEmergencies?.emergencies
+            ?.filter((em) => em.isActive)
+            .map((em) => em._id) || [];
+
+        if (activeEmergencyIds.length > 0) {
+          await User.updateOne(
+            { _id: userId },
+            { $set: { "emergencies.$[em].isActive": false } },
+            { arrayFilters: [{ "em.isActive": true }] }
+          );
+
+          const cancellingUsername =
+            userWithEmergencies?.username || userWithEmergencies?.name || userId;
+          console.log(
+            `Existing emergencies cancelled for ${cancellingUsername}: ${activeEmergencyIds.join(",")}`
+          );
+
+          // Notify subscribers that previous emergencies have been cancelled
+          emergencySubscribers.forEach((subscriberSockets) => {
+            subscriberSockets?.forEach((socketId) => {
+              activeEmergencyIds.forEach((cancelledId) => {
+                io.to(socketId).emit("emergency:cancelled", { emergencyId: cancelledId, userId });
+              });
+            });
+          });
+        }
+      } catch (err) {
+        console.error("Failed to cancel existing emergencies before raising a new one", err);
+      }
+
       const now = new Date();
       const expiresAt = new Date(now.getTime() + 10 * 60 * 1000);
       const emergencyId = new mongoose.Types.ObjectId();
