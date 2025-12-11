@@ -265,6 +265,13 @@ function Main() {
           resolve();
         };
       });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+
       stream.getTracks().forEach((track) => track.stop());
 
       const streamFront = await navigator.mediaDevices.getUserMedia({
@@ -283,15 +290,22 @@ function Main() {
 
       streamFront.getTracks().forEach((track) => track.stop());
 
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth + videoFront.videoWidth;
-      canvas.height = Math.max(video.videoHeight, videoFront.videoHeight);
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-      ctx.drawImage(videoFront, video.videoWidth, 0, videoFront.videoWidth, videoFront.videoHeight);
+      const canvas2 = document.createElement("canvas");
+      canvas2.width = videoFront.videoWidth;
+      canvas2.height = videoFront.videoHeight;
+      const ctx2 = canvas2.getContext("2d");
+      ctx2.drawImage(videoFront, 0, 0, videoFront.videoWidth, videoFront.videoHeight);
 
-      const base64Image = canvas.toDataURL("image/jpeg", 0.8);
-      return base64Image;
+      const finalCanvas = document.createElement("canvas");
+      finalCanvas.width = canvas.width + canvas2.width;
+      finalCanvas.height = Math.max(canvas.height, canvas2.height);
+      const ctxFinal = finalCanvas.getContext("2d");
+      ctxFinal.drawImage(canvas, 0, 0, canvas.width, canvas.height);
+      ctxFinal.drawImage(canvas2, canvas.width, 0, canvas2.width, canvas2.height);
+      console.log(finalCanvas.toDataURL("image/jpeg", 0.8), "FINAL CANVAS");
+
+      return finalCanvas.toDataURL("image/jpeg", 0.8);
+      console.log(finalCanvas.toDataURL("image/jpeg", 0.8), "FINAL CANVAS");
     } catch (error) {
       console.error("Error capturing photo:", error);
       return null;
