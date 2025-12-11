@@ -1,9 +1,8 @@
 const webpush = require("web-push");
 const PushSubscription = require("../Models/pushSubscription");
 
-// VAPID keys from the demo
-const publicVapidKey = "BEtAm8SNrwxSx8gEEwaSvNiXqZf3h_IaQdRjY_LOB328doR6PRfhrhiqhlLAhd_CjoRXPiiKpGr-wIMxueXBIig";
-const privateVapidKey = "D3KJzWn_O-1Jq2bPhggE-XWuu7AYABI4VOAVElkQruM";
+const publicVapidKey = process.env.PUBVAPID || ""
+const privateVapidKey = process.env.PRIVAPID || "";
 
 // Setup web-push with VAPID details
 webpush.setVapidDetails("mailto:dominicchia35@gmail.com", publicVapidKey, privateVapidKey);
