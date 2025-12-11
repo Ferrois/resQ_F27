@@ -9,6 +9,7 @@ import { Link as RouterLink } from "react-router-dom";
 import { useApi } from "../Context/ApiContext";
 import { useLocationContext } from "../Context/LocationContext";
 import { useSocket } from "../Context/SocketContext";
+import ActionGuideDrawer from "../components/app/ActionGuideDrawer";
 import "./main-map.css";
 
 function Main() {
@@ -271,7 +272,20 @@ function Main() {
             </Text>
           )}
         </Box>
-        <Flex align="center" gap="2">
+        <Flex align="center" gap="3">
+          <ActionGuideDrawer
+            trigger={
+              <Button
+                size="sm"
+                color="white"
+                borderColor="whiteAlpha.400"
+                _hover={{ bg: "whiteAlpha.200" }}
+                variant={'subtle'}
+              >
+                Safety Guide
+              </Button>
+            }
+          />
           <IconButton aria-label="Notifications" variant="ghost" color="white" _hover={{ bg: "whiteAlpha.200" }}>
             <FiBell />
           </IconButton>
@@ -309,6 +323,7 @@ function Main() {
           {activeEmergencyId ? "PRESS TO CANCEL" : "EMERGENCY PRESS HERE"}
         </Button>
       </Box>
+
     </Box>
   );
 }
