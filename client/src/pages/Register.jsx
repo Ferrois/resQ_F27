@@ -15,6 +15,7 @@ import {
   Textarea,
   VStack,
 } from '@chakra-ui/react';
+import { FiArrowLeft } from 'react-icons/fi';
 import { useApi } from '../Context/ApiContext';
 import { toaster } from '../components/ui/toaster';
 
@@ -186,6 +187,16 @@ function Register() {
     <Box minH="100vh" bg="bg.surface" py="12">
       <Container maxW="2xl">
         <VStack gap="8" align="stretch">
+          <Button
+            as={Link}
+            to="/"
+            variant="ghost"
+            size="sm"
+            leftIcon={<FiArrowLeft />}
+            alignSelf="flex-start"
+          >
+            Back to landing
+          </Button>
           <Box textAlign="center">
             <Heading size="xl" mb="2">
               Create Your Account

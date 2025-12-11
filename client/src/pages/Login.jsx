@@ -15,6 +15,7 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
+import { FiArrowLeft } from "react-icons/fi";
 import { useApi } from "../Context/ApiContext";
 import { toaster } from "../components/ui/toaster";
 import { usePushNotifications } from "../hooks/usePushNotifications";
@@ -131,6 +132,17 @@ function Login() {
         borderWidth="1px"
       >
         <Card.Header pb={0}>
+          <Button
+            as={RouterLink}
+            to="/"
+            variant="ghost"
+            size="sm"
+            leftIcon={<FiArrowLeft />}
+            alignSelf="flex-start"
+            mb={2}
+          >
+            Back to landing
+          </Button>
           <Heading size="lg">Welcome back</Heading>
           <Text mt={2} color="gray.500">
             Login with your username and password
