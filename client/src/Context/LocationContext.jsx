@@ -5,15 +5,24 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { useApi } from "./ApiContext";
 
 const LocationContext = createContext();
 
 export function LocationProvider({ children }) {
+  const { auth } = useApi();
   const [location, setLocation] = useState(null);
   const [error, setError] = useState(null);
   const [heading, setHeading] = useState(null);
 
   const fetchLocation = useCallback(() => {
+    // Only fetch location if user is authenticated
+    if (!auth?.accessToken) {
+      setLocation(null);
+      setError(null);
+      return;
+    }
+
     if (!("geolocation" in navigator)) {
       setError("Geolocation is not supported in this browser.");
       return;
@@ -37,13 +46,20 @@ export function LocationProvider({ children }) {
         timeout: 10000,
       }
     );
-  }, []);
+  }, [auth?.accessToken]);
 
   useEffect(() => {
-    fetchLocation();
-    const interval = setInterval(fetchLocation, 10000);
-    return () => clearInterval(interval);
-  }, [fetchLocation]);
+    // Only start fetching location if user is authenticated
+    if (auth?.accessToken) {
+      fetchLocation();
+      const interval = setInterval(fetchLocation, 10000);
+      return () => clearInterval(interval);
+    } else {
+      // Clear location when user logs out
+      setLocation(null);
+      setError(null);
+    }
+  }, [fetchLocation, auth?.accessToken]);
 
   // Track device orientation/heading
   useEffect(() => {

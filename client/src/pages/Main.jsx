@@ -433,13 +433,29 @@ function Main() {
           {nearbyEmergencies.map((em) => (
             <Marker key={em.emergencyId} position={[em.latitude, em.longitude]} icon={dangerPulseIcon}>
               <Popup>
-                <Stack spacing={2}>
+                <Stack spacing={2} maxW="300px">
                   <Heading size="sm">{em.requester?.name || em.requester?.username || "Emergency"}</Heading>
                   <Text fontSize="sm" color="gray.700">
                     Distance: {em.distance ? `${Math.round(em.distance)}m` : "nearby"}
                   </Text>
-                  <Text fontWeight="semibold">Phone</Text>
-                  <Text fontSize="sm">{em.requester?.phoneNumber || "N/A"}</Text>
+                  {em.image && (
+                    <Box>
+                      <Text fontWeight="semibold" mb={2}>Emergency Image</Text>
+                      <Box
+                        as="img"
+                        src={em.image}
+                        alt="Emergency situation"
+                        maxW="100%"
+                        borderRadius="md"
+                        borderWidth="1px"
+                        borderColor="gray.200"
+                      />
+                    </Box>
+                  )}
+                  <Box>
+                    <Text fontWeight="semibold">Phone</Text>
+                    <Text fontSize="sm">{em.requester?.phoneNumber || "N/A"}</Text>
+                  </Box>
                   <Box>
                     <Text fontWeight="semibold">Medical</Text>
                     {em.requester?.medical?.length ? (
