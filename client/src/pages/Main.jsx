@@ -252,27 +252,27 @@ function Main() {
 
   const capturePhoto = useCallback(async () => {
     try {
-      alert(1)
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }, // Use back camera on mobile
-      });
-      alert(2)
+      // alert(1)
+      // const stream = await navigator.mediaDevices.getUserMedia({
+      //   video: { facingMode: "environment" }, // Use back camera on mobile
+      // });
+      // alert(2)
       const streamFront = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user" }, // Use back camera on mobile
+        video: { facingMode: "user" }, // Use front camera on mobile
       });
       alert(3)
-      const video = document.createElement("video");
-      video.srcObject = stream;
-      video.play();
-      alert(4)
-      await new Promise((resolve) => {
-        video.onloadedmetadata = () => {
-          video.width = video.videoWidth;
-          video.height = video.videoHeight;
-          resolve();
-        };
-      });
-      alert(5)
+      // const video = document.createElement("video");
+      // video.srcObject = stream;
+      // video.play();
+      // alert(4)
+      // await new Promise((resolve) => {
+      //   video.onloadedmetadata = () => {
+      //     video.width = video.videoWidth;
+      //     video.height = video.videoHeight;
+      //     resolve();
+      //   };
+      // });
+      // alert(5)
       const videoFront = document.createElement("video");
       videoFront.srcObject = streamFront;
       videoFront.play();
@@ -284,16 +284,24 @@ function Main() {
           resolve();
         };
       });
-      alert(7)
+      // alert(7)
+      // const canvas = document.createElement("canvas");
+      // canvas.width = video.videoWidth + videoFront.videoWidth;
+      // canvas.height = Math.max(video.videoHeight, videoFront.videoHeight);
+      // const ctx = canvas.getContext("2d");
+      // ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+      // ctx.drawImage(videoFront, video.videoWidth, 0, videoFront.videoWidth, videoFront.videoHeight);
+      // alert(8)
+
       const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth + videoFront.videoWidth;
-      canvas.height = Math.max(video.videoHeight, videoFront.videoHeight);
+      canvas.width = videoFront.videoWidth;
+      canvas.height = videoFront.videoHeight;
       const ctx = canvas.getContext("2d");
-      ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-      ctx.drawImage(videoFront, video.videoWidth, 0, videoFront.videoWidth, videoFront.videoHeight);
+      ctx.drawImage(videoFront, 0, 0, videoFront.videoWidth, videoFront.videoHeight);
       alert(8)
+
       // Stop the video stream
-      stream.getTracks().forEach((track) => track.stop());
+      // stream.getTracks().forEach((track) => track.stop());
       streamFront.getTracks().forEach((track) => track.stop());
       alert(9)
       // Convert to base64
