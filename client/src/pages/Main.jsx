@@ -21,7 +21,7 @@ import {
 } from "@chakra-ui/react";
 import { FiSettings, FiBell, FiNavigation, FiHeart, FiPhone, FiMapPin, FiInfo, FiActivity } from "react-icons/fi";
 import { toaster } from "../components/ui/toaster";
-import { MapContainer, TileLayer, CircleMarker, Marker } from "react-leaflet";
+import { MapContainer, TileLayer, Circle, CircleMarker, Marker } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Link as RouterLink } from "react-router-dom";
@@ -33,6 +33,7 @@ import ActionGuideDrawer from "../components/app/ActionGuideDrawer";
 import "./main-map.css";
 import useLocalStorage from "../hooks/useLocalStorage";
 import useAccelerometerFallDetection from "../hooks/useAccelerometer";
+import { mergeImages } from "merge-base64";
 
 function Main() {
   const { auth, authRequest, setSession } = useApi();
@@ -249,10 +250,10 @@ function Main() {
     refreshLocation();
   };
 
-  const capturePhoto = useCallback(async () => {
+  const capturePhoto = useCallback(async (type) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }, // Use back camera on mobile
+        video: { facingMode: type }, // Use back camera on mobile
       });
       const video = document.createElement("video");
       video.srcObject = stream;
@@ -280,18 +281,13 @@ function Main() {
       return base64Image;
     } catch (error) {
       console.error("Error capturing photo:", error);
-      toaster.warning({
-        status: "warning",
-        title: "Camera unavailable",
-        description: "Could not capture photo. Emergency will be sent without image.",
-      });
       return null;
     }
   }, []);
 
   const handleEmergencyPress = useCallback(async () => {
     if (!socket) {
-      toaster.error({ status: "error", title: "Not connected", description: "Socket connection not ready yet." });
+      toaster.error({ status: "error", closable: true, title: "Not connected", description: "Socket connection not ready yet." });
       return;
     }
 
@@ -300,6 +296,7 @@ function Main() {
 
     if (!location?.lat || !location?.lng) {
       toaster.error({
+        closable: true,
         status: "error",
         title: "Location unavailable",
         description: "We need your location before raising an emergency.",
@@ -318,12 +315,14 @@ function Main() {
           setNearestAEDs([]); // Clear AEDs when emergency is cancelled
           toaster.create({
             status: "info",
+            closable: true,
             title: "Emergency cancelled",
             description: "Your emergency has been cancelled.",
           });
         } else {
           toaster.create({
             status: "error",
+            closable: true,
             title: "Failed to cancel",
             description: res?.message || "Please try again.",
           });
@@ -339,7 +338,25 @@ function Main() {
       typeof window !== "undefined"
         ? JSON.parse(window.localStorage.getItem("allowEmergencyPhoto") ?? "true")
         : allowEmergencyPhoto;
-    const imageBase64 = photoAllowed ? await capturePhoto() : null;
+    let finalBase64 = null;
+    const imageBase64Back = photoAllowed ? await capturePhoto("environment") : null;
+    const imageBase64Front = photoAllowed ? await capturePhoto("user") : null;
+    if (!imageBase64Front && !imageBase64Back) {
+      toaster.warning({
+        status: "warning",
+        title: "Camera unavailable",
+        description: "Could not capture photo. Emergency will be sent without image.",
+        closable: true,
+      });
+      finalBase64 = null;
+    }
+    if (imageBase64Front && imageBase64Back) {
+      finalBase64 = mergeImages([imageBase64Front, imageBase64Back]);
+    } else if (imageBase64Front) {
+      finalBase64 = imageBase64Front;
+    } else if (imageBase64Back) {
+      finalBase64 = imageBase64Back;
+    }
 
     socket.emit(
       "emergency:raise",
@@ -347,7 +364,7 @@ function Main() {
         latitude: location.lat,
         longitude: location.lng,
         accuracy: location.accuracy,
-        image: imageBase64,
+        image: finalBase64,
       },
       (res) => {
         setIsSendingSOS(false);
@@ -359,12 +376,14 @@ function Main() {
           }
           toaster.success({
             status: "success",
+            closable: true,
             title: "Emergency sent",
             description: "Nearby responders have been notified.",
           });
         } else {
           toaster.error({
             status: "error",
+            closable: true,
             title: "Failed to send emergency",
             description: res?.message || "Please try again.",
           });
@@ -433,6 +452,7 @@ function Main() {
     if (accelerometerError) {
       toaster.error({
         status: "error",
+        closable: true,
         title: "Fall detection unavailable",
         description: accelerometerError,
       });
@@ -453,6 +473,7 @@ function Main() {
       toaster.warning({
         status: "warning",
         title: "Emergency nearby",
+        closable: true,
         description: `Someone needs help ${distance}.`,
       });
     };
@@ -525,12 +546,14 @@ function Main() {
         toaster.success({
           status: "success",
           title: "Medical information updated",
+          closable: true,
           description: "Your medical information has been saved successfully.",
         });
       } else {
         toaster.error({
           status: "error",
           title: "Failed to update",
+          closable: true,
           description: response.error?.message || "Please try again.",
         });
       }
@@ -538,6 +561,7 @@ function Main() {
       toaster.error({
         status: "error",
         title: "Error",
+        closable: true,
         description: "Failed to update medical information.",
       });
     } finally {
@@ -561,6 +585,17 @@ function Main() {
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           {location && (
             <>
+              <Circle
+                center={[location.lat, location.lng]}
+                radius={18}
+                pathOptions={{
+                  color: "#3182ce",
+                  weight: 0,
+                  fillColor: "#3182ce",
+                  fillOpacity: 0.15,
+                }}
+                interactive={false}
+              />
               {userIcon ? (
                 <Marker
                   position={[location.lat, location.lng]}
@@ -689,7 +724,7 @@ function Main() {
         <Button
           size="lg"
           px="10"
-          py="6"         
+          py="6"
           colorPalette={activeEmergencyId ? "orange" : "red"}
           shadow="lg"
           fontWeight="bold"
