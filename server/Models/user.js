@@ -36,6 +36,29 @@ const SkillsSchema = mongoose.Schema({
   }
 });
 
+const AISummarySchema = mongoose.Schema({
+  condition: {
+    type: String,
+    required: false
+  },
+  severity: {
+    type: String,
+    required: false
+  },
+  reasoning: {
+    type: String,
+    required: false
+  },
+  action: {
+    type: String,
+    required: false
+  },
+  location: {
+    type: String,
+    required: false
+  }
+}, { _id: false });
+
 const EmergencySchema = mongoose.Schema({
   isActive: {
     type: Boolean,
@@ -52,6 +75,10 @@ const EmergencySchema = mongoose.Schema({
   },
   Image: {
     type: String,
+    required: false
+  },
+  aiSummary: {
+    type: AISummarySchema,
     required: false
   }
 })
@@ -111,6 +138,11 @@ const UserSchema = mongoose.Schema({
   },
   emergencies: {
     type: [EmergencySchema]
+  },
+  lastLogin: {
+    type: Date,
+    required: false,
+    default: null
   }
 });
 

@@ -95,13 +95,12 @@ async function sendActiveEmergenciesToUser(userId, io, targetSocketId) {
             distance,
             image: emergency.Image || null,
             nearestAEDs,
-            aiSummary: null,
+            aiSummary: emergency.aiSummary || null,
             requester,
           };
+          console.log(payload)
 
-          const sockets = targetSocketId
-            ? [targetSocketId]
-            : Array.from(emergencySubscribers.get(String(userId)) || []);
+          const sockets = targetSocketId ? [targetSocketId] : Array.from(emergencySubscribers.get(String(userId)) || []);
           sockets.forEach((socketId) => io.to(socketId).emit("emergency:nearby", payload));
         });
     });
@@ -154,10 +153,7 @@ function registerSOSHandlers(io) {
       // Cancel any existing active emergencies for this user before creating a new one
       try {
         const userWithEmergencies = await User.findById(userId).select(["emergencies", "username", "name"]);
-        const activeEmergencyIds =
-          userWithEmergencies?.emergencies
-            ?.filter((em) => em.isActive)
-            .map((em) => em._id) || [];
+        const activeEmergencyIds = userWithEmergencies?.emergencies?.filter((em) => em.isActive).map((em) => em._id) || [];
 
         if (activeEmergencyIds.length > 0) {
           await User.updateOne(
@@ -166,11 +162,8 @@ function registerSOSHandlers(io) {
             { arrayFilters: [{ "em.isActive": true }] }
           );
 
-          const cancellingUsername =
-            userWithEmergencies?.username || userWithEmergencies?.name || userId;
-          console.log(
-            `Existing emergencies cancelled for ${cancellingUsername}: ${activeEmergencyIds.join(",")}`
-          );
+          const cancellingUsername = userWithEmergencies?.username || userWithEmergencies?.name || userId;
+          console.log(`Existing emergencies cancelled for ${cancellingUsername}: ${activeEmergencyIds.join(",")}`);
 
           // Notify subscribers that previous emergencies have been cancelled
           emergencySubscribers.forEach((subscriberSockets) => {
@@ -188,12 +181,12 @@ function registerSOSHandlers(io) {
       const now = new Date();
       const expiresAt = new Date(now.getTime() + 10 * 60 * 1000);
       const emergencyId = new mongoose.Types.ObjectId();
-      const emergency = { 
-        _id: emergencyId, 
-        isActive: true, 
-        createdAt: now, 
+      const emergency = {
+        _id: emergencyId,
+        isActive: true,
+        createdAt: now,
         expiresAt,
-        Image: payload.image || null
+        Image: payload.image || null,
       };
 
       try {
@@ -254,6 +247,9 @@ function registerSOSHandlers(io) {
             location: "Unknown",
           };
         }
+
+        // Update the emergency in the database with AI summary
+        await User.updateOne({ _id: userId, "emergencies._id": emergencyId }, { $set: { "emergencies.$.aiSummary": aiSummary } });
 
         // Collect nearby user IDs for push notifications
         const nearbyUserIds = [];
@@ -366,8 +362,7 @@ function registerSOSHandlers(io) {
 
       try {
         const userDoc = await User.findById(userId).select("emergencies username name");
-        const activeIds =
-          userDoc?.emergencies?.filter((em) => em.isActive)?.map((em) => em._id) || [];
+        const activeIds = userDoc?.emergencies?.filter((em) => em.isActive)?.map((em) => em._id) || [];
 
         if (activeIds.length > 0) {
           await User.updateOne(
@@ -377,9 +372,7 @@ function registerSOSHandlers(io) {
           );
 
           const cancellingUsername = userDoc?.username || userDoc?.name || userId;
-          console.log(
-            `Socket disconnected; cancelling active emergencies for ${cancellingUsername}: ${activeIds.join(",")}`
-          );
+          console.log(`Socket disconnected; cancelling active emergencies for ${cancellingUsername}: ${activeIds.join(",")}`);
 
           emergencySubscribers.forEach((subscriberSockets) => {
             subscriberSockets?.forEach((socketId) => {

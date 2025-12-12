@@ -1,7 +1,20 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Box, Button, Container, Flex, Heading, Link as ChakraLink, Separator, Stack, Text, VStack } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Container,
+  Flex,
+  Heading,
+  Link as ChakraLink,
+  Separator,
+  Stack,
+  Text,
+  VStack,
+  HStack,
+} from "@chakra-ui/react";
 import { useApi } from "../Context/ApiContext";
+import Logo from "../components/app/Logo";
 
 function NavBar() {
   const { token, logout } = useApi();
@@ -12,7 +25,9 @@ function NavBar() {
         <Flex justify="space-between" align="center">
           <Link to="/">
             <Heading size="lg" color="blue.500">
-              ResQ
+              <HStack>
+                <Logo /> resQ
+              </HStack>
             </Heading>
           </Link>
           <Stack direction="row" gap="4" align="center">

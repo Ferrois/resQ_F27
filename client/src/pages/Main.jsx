@@ -19,7 +19,7 @@ import {
   Separator,
   HStack,
 } from "@chakra-ui/react";
-import { FiSettings, FiBell, FiNavigation, FiHeart, FiPhone, FiMapPin, FiInfo, FiActivity } from "react-icons/fi";
+import { FiSettings, FiBell, FiNavigation, FiHeart, FiPhone, FiMapPin, FiInfo, FiActivity, FiPlus } from "react-icons/fi";
 import { toaster } from "../components/ui/toaster";
 import { MapContainer, TileLayer, Circle, CircleMarker, Marker } from "react-leaflet";
 import L from "leaflet";
@@ -48,6 +48,7 @@ function Main() {
   const [selectedEmergency, setSelectedEmergency] = useState(null);
   const [selectedAED, setSelectedAED] = useState(null);
   const [isUserInfoDialogOpen, setIsUserInfoDialogOpen] = useState(false);
+  const [isEmergencyListOpen, setIsEmergencyListOpen] = useState(false);
   const [isSavingMedical, setIsSavingMedical] = useState(false);
   const [medicalData, setMedicalData] = useState({
     medical: [],
@@ -227,6 +228,16 @@ function Main() {
     ]);
   }, [playPattern]);
 
+  const sortedNearbyEmergencies = useMemo(
+    () =>
+      [...nearbyEmergencies].sort((a, b) => {
+        const aDistance = typeof a.distance === "number" ? a.distance : Number.POSITIVE_INFINITY;
+        const bDistance = typeof b.distance === "number" ? b.distance : Number.POSITIVE_INFINITY;
+        return aDistance - bDistance;
+      }),
+    [nearbyEmergencies]
+  );
+
   useEffect(() => {
     if (location && mapRef.current) {
       // if location is about the same location as the map, dont set
@@ -236,7 +247,7 @@ function Main() {
         // Use a small threshold for latitude/longitude (in degrees)
         const threshold = 2;
         if (Math.abs(currentCenter.lat - location.lat) > threshold || Math.abs(currentCenter.lng - location.lng) > threshold) {
-          map.setView([location.lat, location.lng], 15);
+          map.setView([location.lat, location.lng], 16);
         }
       }
     }
@@ -244,7 +255,7 @@ function Main() {
 
   const recenterOnUser = () => {
     if (location && mapRef.current) {
-      mapRef.current.flyTo([location.lat, location.lng], 15);
+      mapRef.current.flyTo([location.lat, location.lng], 17);
       return;
     }
     refreshLocation();
@@ -303,7 +314,6 @@ function Main() {
       console.log(finalCanvas.toDataURL("image/jpeg", 0.8), "FINAL CANVAS");
 
       return finalCanvas.toDataURL("image/jpeg", 0.8);
-      console.log(finalCanvas.toDataURL("image/jpeg", 0.8), "FINAL CANVAS");
     } catch (error) {
       console.error("Error capturing photo:", error);
       return null;
@@ -319,7 +329,6 @@ function Main() {
     // Provide immediate audible feedback when SOS is pressed
     playModerateWarning();
     setIsSendingSOS(true);
-
 
     if (!location?.lat || !location?.lng) {
       toaster.error({
@@ -357,7 +366,6 @@ function Main() {
       });
       return;
     }
-
 
     // Capture photo before sending emergency (respect user setting and latest storage value)
     const photoAllowed =
@@ -526,6 +534,15 @@ function Main() {
       socket.off("emergency:cancelled", cancelHandler);
     };
   }, [playHighWarning, socket]);
+
+  const handleNavigateToEmergency = useCallback((emergency) => {
+    if (!emergency) return;
+    if (mapRef.current && emergency.latitude && emergency.longitude) {
+      mapRef.current.flyTo([emergency.latitude, emergency.longitude], 18);
+    }
+    setSelectedEmergency(emergency);
+    setIsEmergencyListOpen(false);
+  }, []);
 
   const handleAddMedical = () => {
     setMedicalData((prev) => ({
@@ -712,9 +729,9 @@ function Main() {
             <Badge mt="2" colorPalette={accelerometerSupported ? "green" : "gray"} variant="subtle" fontSize="xs">
               {accelerometerSupported
                 ? fallDetectionActive
-                  ? "Fall detection active"
-                  : "Fall detection ready"
-                : "Fall detection inactive"}
+                  ? "Fall detection on"
+                  : "Fall detection off"
+                : "Fall detection off"}
             </Badge>
           )}
         </Box>
@@ -727,6 +744,35 @@ function Main() {
               </Button>
             }
           />
+          <Box position="relative" display="inline-block">
+            <IconButton
+              aria-label="Nearby emergencies"
+              variant="solid"
+              colorPalette="red"
+              onClick={() => setIsEmergencyListOpen(true)}
+              isDisabled={sortedNearbyEmergencies.length === 0}
+            >
+              <FiBell />
+            </IconButton>
+            {sortedNearbyEmergencies.length > 0 && (
+              <Badge
+                position="absolute"
+                top="-6px"
+                right="-6px"
+                borderRadius="full"
+                color="white"
+                colorPalette="orange"
+                variant="solid"
+                px="2"
+                py="1"
+                fontSize="xs"
+                minW="22px"
+                textAlign="center"
+              >
+                {sortedNearbyEmergencies.length}
+              </Badge>
+            )}
+          </Box>
           <IconButton
             aria-label="Medical Information"
             variant="ghost"
@@ -734,7 +780,7 @@ function Main() {
             _hover={{ bg: "whiteAlpha.200" }}
             onClick={() => setIsMedicalDialogOpen(true)}
           >
-            <FiHeart />
+            <FiPlus />
           </IconButton>
 
           <IconButton aria-label="Settings" as={RouterLink} to="/settings" variant="ghost" color="white">
@@ -795,6 +841,62 @@ function Main() {
         </Box>
       ) : null}
 
+      <Dialog.Root open={isEmergencyListOpen} onOpenChange={(e) => setIsEmergencyListOpen(e.open)}>
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content maxW="720px" maxH="80vh" overflowY="auto">
+              <Dialog.Header display="flex" justifyContent="space-between" alignItems="center">
+                <Dialog.Title>Nearby emergencies</Dialog.Title>
+                <CloseButton onClick={() => setIsEmergencyListOpen(false)} />
+              </Dialog.Header>
+              <Dialog.Body>
+                <Stack gap="3">
+                  {sortedNearbyEmergencies.length === 0 && (
+                    <Text color="gray.600" fontSize="sm">
+                      No active emergencies near you right now.
+                    </Text>
+                  )}
+                  {sortedNearbyEmergencies.map((em) => (
+                    <Card.Root key={em.emergencyId} variant="subtle">
+                      <Card.Body gap="3">
+                        <HStack justify="space-between" align="center" gap="3">
+                          <Box>
+                            <Heading size="sm">{em?.requester?.name || em?.requester?.username || "Emergency alert"}</Heading>
+                            <Text fontSize="xs" color="gray.500">
+                              {em.receivedAt ? `Received ${new Date(em.receivedAt).toLocaleTimeString()}` : "Just now"}
+                            </Text>
+                          </Box>
+                          <Badge colorPalette="red" variant="solid">
+                            {typeof em.distance === "number" ? `${Math.round(em.distance)}m away` : "Nearby"}
+                          </Badge>
+                        </HStack>
+                        {em?.aiSummary?.severity && (
+                          <Badge colorPalette="purple" variant="subtle" alignSelf="flex-start">
+                            Severity: {em.aiSummary.severity}
+                          </Badge>
+                        )}
+                        {em?.aiSummary?.condition && (
+                          <Text fontSize="sm" color="gray.300">
+                            {em.aiSummary.condition}
+                          </Text>
+                        )}
+                        {em?.requester?.phoneNumber && <Text>Phone: {em?.requester?.phoneNumber}</Text>}
+                        <HStack justify="flex-end" gap="2">
+                          <Button size="sm" onClick={() => handleNavigateToEmergency(em)} leftIcon={<FiMapPin />}>
+                            View on map
+                          </Button>
+                        </HStack>
+                      </Card.Body>
+                    </Card.Root>
+                  ))}
+                </Stack>
+              </Dialog.Body>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
+
       <Dialog.Root
         open={!!selectedEmergency}
         onOpenChange={(e) => {
@@ -847,6 +949,17 @@ function Main() {
                     </HStack>
                     <Text fontSize="sm" color="gray.300" pl="6">
                       {selectedEmergency?.requester?.phoneNumber || "N/A"}
+                    </Text>
+                  </Box>
+                  <Box>
+                    <HStack mb="2" gap="2">
+                      <FiPhone size="16" />
+                      <Text fontWeight="semibold" fontSize="sm">
+                        Address
+                      </Text>
+                    </HStack>
+                    <Text fontSize="sm" color="gray.300" pl="6">
+                      {selectedEmergency?.requester?.address || "N/A"}
                     </Text>
                   </Box>
 

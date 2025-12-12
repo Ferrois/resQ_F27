@@ -2,8 +2,7 @@ require("dotenv").config();
 const jwt = require("jsonwebtoken");
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || process.env.SECRETKEY;
-const REFRESH_TOKEN_SECRET =
-  process.env.REFRESH_TOKEN_SECRET || process.env.SECRETREFRESH || process.env.SECRETKEY;
+const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || process.env.SECRETREFRESH || process.env.SECRETKEY;
 
 // Token TTLs
 const ACCESS_TOKEN_EXPIRY = "30m";
@@ -29,31 +28,76 @@ function authenticateToken(req, res, next) {
     return res.status(401).json({ type: "error", message: "Access token missing" });
   }
 
-  jwt.verify(token, ACCESS_TOKEN_SECRET, (err, user) => {
+  jwt.verify(token, ACCESS_TOKEN_SECRET, async (err, decoded) => {
     if (err) {
       return res.status(403).json({ type: "error", message: "Invalid or expired token" });
     }
-    req.user = user;
-    next();
+
+    // Check lastLogin against database for single device enforcement
+    try {
+      const User = require("../Models/user");
+      const user = await User.findById(decoded.id).select("lastLogin");
+
+      if (!user) {
+        return res.status(404).json({ type: "error", message: "User not found" });
+      }
+
+      const tokenLastLogin = decoded.lastLogin ? new Date(decoded.lastLogin) : null;
+      const userLastLogin = user.lastLogin ? new Date(user.lastLogin) : null;
+
+      // If both exist and don't match, invalidate the session
+      if (tokenLastLogin && userLastLogin && tokenLastLogin.getTime() !== userLastLogin.getTime()) {
+        return res.status(401).json({
+          type: "error",
+          message: "Session invalidated - logged in from another device",
+          code: "DEVICE_MISMATCH",
+        });
+      }
+
+      req.user = decoded;
+      next();
+    } catch (dbError) {
+      console.error("Database error in authenticateToken:", dbError);
+      return res.status(500).json({ type: "error", message: "Internal server error" });
+    }
   });
 }
 
 // Verify token middleware (for sockets)
 function authenticateSocket(socket, next) {
-  const token =
-    socket?.handshake?.auth?.token ||
-    (socket?.handshake?.headers?.authorization || "").replace("Bearer ", "");
+  const token = socket?.handshake?.auth?.token || (socket?.handshake?.headers?.authorization || "").replace("Bearer ", "");
 
   if (!token) {
     return next(new Error("Missing token"));
   }
 
-  jwt.verify(token, ACCESS_TOKEN_SECRET, (err, user) => {
+  jwt.verify(token, ACCESS_TOKEN_SECRET, async (err, decoded) => {
     if (err) {
       return next(new Error("Invalid or expired token"));
     }
-    socket.user = user;
-    next();
+
+    // Check lastLogin against database for single device enforcement
+    try {
+      const User = require("../Models/user");
+      const user = await User.findById(decoded.id).select("lastLogin");
+
+      if (!user) {
+        return next(new Error("User not found"));
+      }
+
+      const tokenLastLogin = decoded.lastLogin ? new Date(decoded.lastLogin) : null;
+      const userLastLogin = user.lastLogin ? new Date(user.lastLogin) : null;
+
+      // If both exist and don't match, invalidate the session
+      if (tokenLastLogin && userLastLogin && tokenLastLogin.getTime() !== userLastLogin.getTime()) {
+        return next(new Error("Session invalidated - logged in from another device"));
+      }
+      socket.user = decoded;
+      next();
+    } catch (dbError) {
+      console.error("Database error in authenticateSocket:", dbError);
+      return next(new Error("Internal server error"));
+    }
   });
 }
 

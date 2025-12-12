@@ -9,6 +9,7 @@ import React, {
 import axios from "axios";
 import useLocalStorage from "../hooks/useLocalStorage";
 import { config } from "../config";
+import { toaster } from "../components/ui/toaster";
 
 const ApiContext = createContext();
 
@@ -35,12 +36,20 @@ export const ApiProvider = ({ children }) => {
     []
   );
 
-  const logout = useCallback(() => {
+  const logout = useCallback((showToast = false, message = null) => {
     setAuth({
       accessToken: null,
       refreshToken: null,
       user: null,
     });
+    if (showToast && message) {
+      toaster.error({
+        status: "error",
+        title: "Logged out",
+        description: message,
+        closable: true,
+      });
+    }
   }, [setAuth]);
 
   const setSession = useCallback(
@@ -90,6 +99,13 @@ export const ApiProvider = ({ children }) => {
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
+        
+        // Check for device mismatch error
+        if (error.response?.data?.code === "DEVICE_MISMATCH") {
+          logout(true, "You have been logged in from another device. Please log in again.");
+          return Promise.reject(error);
+        }
+        
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
           const newAccessToken = await refreshAccessToken();
@@ -106,7 +122,7 @@ export const ApiProvider = ({ children }) => {
       api.interceptors.request.eject(requestInterceptor);
       api.interceptors.response.eject(responseInterceptor);
     };
-  }, [api, auth.accessToken, refreshAccessToken]);
+  }, [api, auth.accessToken, refreshAccessToken, logout]);
 
   const login = useCallback(
     async (username, password) => {
@@ -136,14 +152,20 @@ export const ApiProvider = ({ children }) => {
           await refreshAccessToken();
         }
       } catch (error) {
-        await refreshAccessToken();
+        // Check for device mismatch during bootstrap
+        if (error.response?.data?.code === "DEVICE_MISMATCH") {
+          logout(true, "You have been logged in from another device. Please log in again.");
+        } else {
+          await refreshAccessToken();
+        }
       } finally {
         setIsLoadingSession(false);
       }
     };
 
     bootstrap();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   // Unauthenticated request (public endpoints)
   const publicRequest = useCallback(

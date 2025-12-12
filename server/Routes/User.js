@@ -72,7 +72,10 @@ router.post("/register", async (req, res) => {
       dependencies: dependencies || []
     });
     await user.save();
-    const payload = { id: user._id, username: user.username };
+    // Set lastLogin for new user registration
+    const lastLogin = new Date();
+    await UserSchema.findByIdAndUpdate(user._id, { lastLogin });
+    const payload = { id: user._id, username: user.username, lastLogin: lastLogin.getTime() };
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
@@ -106,7 +109,11 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ type: "error", message: "Invalid credentials password" });
     }
 
-    const payload = { id: user._id, username: user.username };
+    // Update lastLogin timestamp
+    const lastLogin = new Date();
+    await UserSchema.findByIdAndUpdate(user._id, { lastLogin });
+
+    const payload = { id: user._id, username: user.username, lastLogin: lastLogin.getTime() };
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
@@ -136,7 +143,21 @@ router.post("/refresh", async (req, res) => {
       return res.status(404).json({ type: "error", message: "User not found" });
     }
 
-    const payload = { id: user._id, username: user.username };
+    // Check if lastLogin matches (single device enforcement)
+    const tokenLastLogin = decoded.lastLogin ? new Date(decoded.lastLogin) : null;
+    const userLastLogin = user.lastLogin ? new Date(user.lastLogin) : null;
+    
+    if (tokenLastLogin && userLastLogin && tokenLastLogin.getTime() !== userLastLogin.getTime()) {
+      return res.status(401).json({ 
+        type: "error", 
+        message: "Session invalidated - logged in from another device",
+        code: "DEVICE_MISMATCH"
+      });
+    }
+
+    // Use the existing lastLogin from token, or keep user's lastLogin
+    const lastLogin = tokenLastLogin || userLastLogin || new Date();
+    const payload = { id: user._id, username: user.username, lastLogin: lastLogin.getTime() };
     const newAccessToken = generateAccessToken(payload);
     const newRefreshToken = generateRefreshToken(payload);
 
