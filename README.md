@@ -109,6 +109,25 @@ SECRET_KEY=<SecretKey HERE>
 PUBVAPID=<vapidPublicKey HERE>
 PRIVAPID=<vapidPrivateKey HERE>
 EMAILVAPID=<vapidEmail HERE> # include mailto: in the front (example: EMAILVAPID=mailto:abc123@gmail.com)
+```
+
+### 4. Run the dev servers (using 2 separate terminals)
+
+```bash
+# Run client (vite)
+npm run clientdev
+```
+
+- using another terminal:
+
+```bash
+# Run server (nodeJs)
+npm run serverdev
+```
+
+### 5. Open the website
+
+Now, go to [http://localhost:5173](http://localhost:5173) in your browser to access the ResQ application.
 
 ## Notes
 

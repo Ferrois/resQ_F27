@@ -3,9 +3,10 @@ const PushSubscription = require("../Models/pushSubscription");
 
 const publicVapidKey = process.env.PUBVAPID || ""
 const privateVapidKey = process.env.PRIVAPID || "";
+const emailVapid = process.env.emailVapid || ""
 
 // Setup web-push with VAPID details
-webpush.setVapidDetails("mailto:dominicchia35@gmail.com", publicVapidKey, privateVapidKey);
+webpush.setVapidDetails(emailVapid, publicVapidKey, privateVapidKey);
 
 /**
  * Subscribe a user to push notifications
