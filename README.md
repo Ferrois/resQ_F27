@@ -109,6 +109,9 @@ SECRET_KEY=<SecretKey HERE>
 PUBVAPID=<vapidPublicKey HERE>
 PRIVAPID=<vapidPrivateKey HERE>
 EMAILVAPID=<vapidEmail HERE> # include mailto: in the front (example: EMAILVAPID=mailto:abc123@gmail.com)
+
+# Dev Mode
+DEV_MODE=y (y for yes, n for no)
 ```
 
 ### 4. Run the dev servers (using 2 separate terminals)

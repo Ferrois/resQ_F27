@@ -6,7 +6,9 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const dbURI = process.env.dbURI;
 const server = require("http").createServer(app);
-const io = require("socket.io")(server, { cors: { origin: "*" } });
+const dev_mode = process.env.DEV_MODE || "n"
+const corsOrigin = (dev_mode == "y") ? "*" : "https://resq.ferroiss.com"
+const io = require("socket.io")(server, { cors: { origin: corsOrigin } });
 const { authenticateSocket } = require("./Crypt/jwtHelper");
 const { registerLocationHandlers } = require("./Socket/LocationControl");
 const { registerSOSHandlers } = require("./Socket/SOSControl");
@@ -18,13 +20,18 @@ mongoose.connect(`${dbURI}`).then((response) => {
 
 //Cors Middleware
 // app.use(
-//   cors({
-//     origin: "*",
-//     methods: ["PUT", "GET", "POST", "DELETE"],
-//     credentials: true,
-//   })
+  // cors({
+  //   origin: "*",
+  //   methods: ["PUT", "GET", "POST", "DELETE"],
+  //   credentials: true,
+  // })
 // );
-app.use(cors())
+app.use(cors({
+  origin: corsOrigin,
+  methods: ["PUT", "GET", "POST", "DELETE"],
+  credentials: true,
+}))
+
 
 //Serve static files from the current directory & Middleware
 app.use(express.static(__dirname));
