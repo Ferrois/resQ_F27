@@ -3,14 +3,12 @@ const PushSubscription = require("../Models/pushSubscription");
 
 const publicVapidKey = process.env.PUBVAPID || ""
 const privateVapidKey = process.env.PRIVAPID || "";
-const emailVapid = process.env.emailVapid || ""
+const emailVapid = process.env.EMAILVAPID || ""
 
 // Setup web-push with VAPID details
 webpush.setVapidDetails(emailVapid, publicVapidKey, privateVapidKey);
 
-/**
- * Subscribe a user to push notifications
- */
+// subscribe user
 async function subscribeUser(userId, subscriptionData) {
   try {
     const subscription = await PushSubscription.findOneAndUpdate(
@@ -40,9 +38,7 @@ async function subscribeUser(userId, subscriptionData) {
   }
 }
 
-/**
- * Unsubscribe a user from push notifications
- */
+// unsub user
 async function unsubscribeUser(userId, endpoint) {
   try {
     if (endpoint) {
@@ -59,9 +55,7 @@ async function unsubscribeUser(userId, endpoint) {
   }
 }
 
-/**
- * Toggle push notifications for a user
- */
+// toggle
 async function togglePushNotifications(userId, enabled) {
   try {
     await PushSubscription.updateMany({ userId }, { enabled, updatedAt: new Date() });
@@ -72,9 +66,7 @@ async function togglePushNotifications(userId, enabled) {
   }
 }
 
-/**
- * Send push notification to a user
- */
+// send
 async function sendNotificationToUser(userId, payload) {
   console.log("Sending notification to user:", userId);
   try {
@@ -128,9 +120,7 @@ async function sendNotificationToUser(userId, payload) {
   }
 }
 
-/**
- * Send push notification to multiple users
- */
+// send multiple
 async function sendNotificationToUsers(userIds, payload) {
   try {
     const subscriptions = await PushSubscription.find({
@@ -188,9 +178,7 @@ async function sendNotificationToUsers(userIds, payload) {
   }
 }
 
-/**
- * Get public VAPID key for client
- */
+// client get public
 function getPublicVapidKey() {
   return publicVapidKey;
 }
