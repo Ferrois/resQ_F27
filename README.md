@@ -127,7 +127,7 @@ npm run serverdev
 
 ### 5. Open the website
 
-Now, go to [http://localhost:5173](http://localhost:5173) in your browser to access the ResQ application.
+Now, go to [http://localhost:5173](http://localhost:5173) in your browser to access the ResQ application. 
 
 ## Notes
 
